@@ -1,3 +1,5 @@
 node_modules
 .env
 implementations.txt
+.wwebjs_auth
+.wwebjs_cache
