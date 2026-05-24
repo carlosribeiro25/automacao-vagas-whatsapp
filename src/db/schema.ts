@@ -47,11 +47,11 @@ export const grupos_Whatsapp =  pgTable('grupos_Whatsaap', {
 export const mensagens = pgTable('mensagens', {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   grupoId: integer("grupo_id").references(() => grupos_Whatsapp.id),
-  autor: text(),
-  conteudo: text(),
-  data: timestamp(),
-  imagem_url: text(),
-  created_at: timestamp()
+  autor: text("autor"),
+  conteudo: text("conteudo"),
+  data: timestamp("data"),
+  imagem_url: text("imagem_url"),
+  created_at: timestamp("created_at").defaultNow()
 })
 
 
