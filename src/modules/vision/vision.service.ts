@@ -36,6 +36,7 @@ Retorne SOMENTE JSON válido.
 
 Se houver dúvida, priorize precisão ao invés de inventar informações.
 
+
 Extrutura obriatória:
 
 {
@@ -52,7 +53,7 @@ Extrutura obriatória:
   "modality": string | null,
   "salary": number | null,
   "benefits": string | null,
-  "group": string | null,
+  "group_name": string | null,
   "contact": string | null,
   "link": string | null,
   "location": string | null
@@ -73,12 +74,29 @@ REGRAS IMPORTANTES:
     oportunidade profissional,
     recrutamento.
 
+- texto_extraido deve conter TODO o texto identificado na imagem.
+
 -Mensagens pessoais, memes, propagandas, frases motivacionais ou conversas NÃO são vagas.
  
 - modality deve ser:
-  "REMOTO"
-  "HIBRIDO"
-  "PRESENCIAL"
+  "Remoto"
+  "Hibrido"
+  "Presencial"
+  "Home Office"
+
+EXEMPLO:
+
+Entrada:
+Imagem de vaga de estágio frontend remoto.
+
+Saída:
+{
+  "is_job": true,
+  "title": "Estágio Frontend",
+  "tipo_vaga": "Estagio",
+  "category": "Tecnologia",
+  "modality": "Remoto"
+}
 
 - category deve ser curta:
   "Tecnologia"
@@ -116,22 +134,21 @@ REGRAS IMPORTANTES:
       },
     })
 
+    if(!fs.existsSync(imagePath)) {
+        throw new Error('Image not found!')
+    }
+
   const content = response.choices[0].message.content || '{}'
 
-  const parsed = JSON.parse(content)
+  let parsed 
+   try {
+    parsed = JSON.parse(content)
+
+  } catch (error){
+    console.error("Erro in parser JSON from AI")
+
+    return null
+  }
 
   return vagaSchema.parse(parsed)
 }
-
-
-// Depois você filtra antes de salvar
-// Exemplo:
-// const data =
-//   await extractJobDataFromImage(imagePath)
-
-// if (!data.is_job) {
-//    console.log('Mensagem ignorada')
-//    return
-// }
-
-// await db.insert(vagas).values(data)
