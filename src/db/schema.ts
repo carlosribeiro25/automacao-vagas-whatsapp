@@ -1,4 +1,4 @@
-import {integer, pgTable, text, timestamp ,check, numeric, boolean} from 'drizzle-orm/pg-core'
+import {integer, pgTable, text, timestamp ,check, numeric, boolean, index} from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'; 
 
 export const users = pgTable("users", {
@@ -17,6 +17,7 @@ export const vagas = pgTable('vagas', {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   title: text("title"),
   messagem: text("mensagem"),
+  mensagemId: integer("mensagem_id").references(() => mensagens.id),
   tipo_vaga: text("tipo_vaga"),
   description: text("description"),
   category: text("category"),
@@ -25,34 +26,47 @@ export const vagas = pgTable('vagas', {
   imagem_original_url: text("imagem_original_url"),
   requirements: text("requirements"),
   modality: text("modality"),
-  salary: numeric("salary"),
+  salary: numeric("salary", { precision: 10, scale: 2}),
   benefits: text("benefits"),
-  group: text("group"),
+  group_name: text("group_name"),
   contact: text("contact"),
   link: text("link"),
   location: text("location"),
-  publishAt: timestamp().defaultNow()
-})
+  is_job: boolean("is_job").default(true),
+  processed_by_ai: boolean("processed_by_ai").default(false),
+  publisheAt: timestamp("published_at").defaultNow()
+}, (table) => [
+  index("vagas_category_idx").on(table.category),
+  index("vagas_location_idx").on(table.location)
+])
 
-export const grupos_Whatsapp =  pgTable('grupos_Whatsaap', {
+export const grupos_whatsapp =  pgTable('grupos_Whatsaap', {
   id:  integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: text("name").notNull(),
-  whatsaapId: integer("whatsaapId").unique().notNull(),
+  whatsaapId: text("whatsaapId").unique().notNull(),
   description: text("description"),
   active: boolean("active").default(true),
   creatAt: timestamp({withTimezone: true}).defaultNow(),
   updateAt: timestamp({withTimezone: true}).defaultNow()
-})
+}, (table) => [
+  index("grupos_whatsapp_active_idx").on(table.active)
+])
 
 export const mensagens = pgTable('mensagens', {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  grupoId: integer("grupo_id").references(() => grupos_Whatsapp.id),
+  grupoId: integer("grupo_id").references(() => grupos_whatsapp.id),
   autor: text("autor"),
   conteudo: text("conteudo"),
-  data: timestamp("data"),
+  tipo_mensagem: text("tipo_mensagem"),
   imagem_url: text("imagem_url"),
-  created_at: timestamp("created_at").defaultNow()
-})
+  processed: boolean("processed").default(false),
+  is_job: boolean("is_job"),
+  data: timestamp("data"),
+  created_at: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("mensagens_processed_idx").on(table.processed),
+  index("mensagens_is_job_idx").on(table.is_job),
+])
 
 
 
