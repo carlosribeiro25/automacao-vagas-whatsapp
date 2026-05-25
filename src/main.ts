@@ -1,10 +1,13 @@
-import pkg, { Message, MessageMedia } from 'whatsapp-web.js'
+import pkg from 'whatsapp-web.js'
+import type { Message } from 'whatsapp-web.js';
 import qrcode from 'qrcode-terminal'
 import { executablePath } from 'puppeteer'
 import fs from 'fs';
 import path from 'path';
 
-const { Client, LocalAuth } = pkg as any
+const { Client, LocalAuth, MessageMedia } = pkg 
+
+
 
 const client = new Client({
     authStrategy: new LocalAuth(),
