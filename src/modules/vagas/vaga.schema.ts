@@ -1,7 +1,7 @@
 import z from "zod";
 
-
 export const vagaSchema = z.object({
+  is_job: z.boolean(),
 
   title: z.string().nullable(),
 
@@ -19,13 +19,18 @@ export const vagaSchema = z.object({
 
   requirements: z.string().nullable(),
 
-  modality: z.string().nullable(),
+  modality: z.enum([
+   "Remoto",
+   "Hibrido",
+   "Presencial",
+   "Home Office" 
+  ]).nullable(),
 
-  salary: z.number().nullable(),
+  salary: z.coerce.number().nullable(),
 
   benefits: z.string().nullable(),
 
-  group: z.string().nullable(),
+  group_name: z.string().nullable(),
 
   contact: z.string().nullable(),
 
