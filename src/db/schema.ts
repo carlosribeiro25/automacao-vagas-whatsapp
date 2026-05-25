@@ -31,7 +31,7 @@ export const vagas = pgTable('vagas', {
   contact: text("contact"),
   link: text("link"),
   location: text("location"),
-  publishAt: timestamp({ withTimezone: true }).defaultNow()
+  publishAt: timestamp().defaultNow()
 })
 
 export const grupos_Whatsapp =  pgTable('grupos_Whatsaap', {
