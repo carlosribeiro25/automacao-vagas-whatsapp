@@ -1,0 +1,33 @@
+import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
+import z from "zod";
+import { db } from "@/db/index.js";
+import { vagas } from "@/db/schema.js";
+import { eq } from "drizzle-orm";
+
+export const deleteVagas: FastifyPluginAsyncZod = async (server) => {
+    server.delete('/vagas/:id', {
+        schema: {
+            tags: ['Vagas'],
+            summary: 'Endpoint para deletar uma vaga',
+
+            params: z.object({
+                id: z.coerce.number()
+            })
+        }
+    }, async (request, reply) => {
+
+        const { id } = request.params
+
+        const deleteVaga = await db
+            .delete(vagas)
+            .where(eq(vagas.id, id))
+            .returning()
+
+        if (deleteVaga.length > 0) {
+
+            return reply.status(200).send({ message: 'Vaga deletada com sucesso' })
+        } else {
+            return reply.status(404).send({ error: 'Vaga nao encontrada' })
+        }
+    })
+}
