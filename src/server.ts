@@ -1,44 +1,64 @@
-import { fastify } from 'fastify'
-import {
-  serializerCompiler,
-  validatorCompiler,
-  jsonSchemaTransform,
-  type ZodTypeProvider,
-} from 'fastify-type-provider-zod'
-import { fastifyCors } from '@fastify/cors'
-import { fastifySwagger } from '@fastify/swagger'
-import ScalarApiReference from '@scalar/fastify-api-reference'
+import { server } from "./app.js"
+import pkg from 'whatsapp-web.js'
+import type { Message } from 'whatsapp-web.js';
+import qrcode from 'qrcode-terminal'
+import { executablePath } from 'puppeteer'
+import fs from 'fs';
+import path from 'path';
 
-const server = fastify({
-  logger: true,
-}).withTypeProvider<ZodTypeProvider>()
+const { Client, LocalAuth, MessageMedia } = pkg 
 
-server.setValidatorCompiler(validatorCompiler)
-server.setSerializerCompiler(serializerCompiler)
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        headless: true,
+        executablePath: executablePath(),
+        timeout: 0,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-extensions',
+        ]
+    }
+});
 
-server.register(fastifyCors, {
-  origin: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
-})
+client.once('ready', () => {
+    console.log('Client is ready!');
+});
 
-server.register(fastifySwagger, {
-  openapi: {
-    info: {
-      title: 'Sistema de filtros de vagas do Whatsapp',
-      version: '1.0.0',
-    },
-  },
+client.on('qr', (qr: string) => {
+    qrcode.generate(qr, { small: true});
+    console.log('QR recebido, gerando...');
+});
 
-  transform: jsonSchemaTransform,
-})
+client.on('auth_failure', (msg: string) => {
+    console.error('Falha de autenticação:', msg);
+});
 
-server.register(ScalarApiReference, {
-  routePrefix: '/docs',
-})
+client.on('change_state', (state: string) => {
+    console.log('Estado mudou:', state);
+});
 
-server.get('/', () => {
-  return 'Hello world!'
-})
+client.on('message', async (msg: Message) => {
+    if (msg.body === '!send-media') {
+        const imagePath = path.join(__dirname, 'image.png')
+        const base64Image = fs.readFileSync(imagePath, { encoding: 'base64' });
+        const media = new MessageMedia('image.png', base64Image);
+        await client.sendMessage(msg.from, media);
+    }
+});
+
+client.on('message_create', (message: Message) => {
+	console.log(message.body);
+});
+
+
+client.initialize().catch( (err: Error)=> console.error('Erro ao inicializar:', err))
+console.log('Inicializando cliente WhatsApp...')
 
 server.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
   console.log('HTTP server running http://localhost:3333/ ')
