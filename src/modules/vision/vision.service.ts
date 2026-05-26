@@ -1,7 +1,6 @@
 import fs from 'fs'
 import { openai } from '@/services/openai.services.js'
 import { vagaSchema } from '../vagas/vaga.schema.js'
-
 export async function extractJobDataFromImage(
   imagePath: string
 ) {

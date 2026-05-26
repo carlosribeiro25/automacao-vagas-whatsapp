@@ -9,7 +9,8 @@
     "format": "biome format --write",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "postinstall": "patch-package"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "@types/pg": "^8.20.0",
     "@types/qrcode-terminal": "^0.12.2",
     "drizzle-kit": "^0.31.10",
+    "patch-package": "^8.0.1",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3"
   },

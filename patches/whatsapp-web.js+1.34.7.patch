@@ -1,0 +1,22 @@
+diff --git a/node_modules/whatsapp-web.js/src/Client.js b/node_modules/whatsapp-web.js/src/Client.js
+index 800109e..507806e 100644
+--- a/node_modules/whatsapp-web.js/src/Client.js
++++ b/node_modules/whatsapp-web.js/src/Client.js
+@@ -393,7 +393,7 @@ class Client extends EventEmitter {
+             async () => {
+                 this.lastLoggedOut = true;
+                 await this.pupPage
+-                    .waitForNavigation({ waitUntil: 'load', timeout: 5000 })
++                    .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 5000 })
+                     .catch((_) => _);
+             },
+         );
+@@ -485,7 +485,7 @@ class Client extends EventEmitter {
+         }
+ 
+         await page.goto(WhatsWebURL, {
+-            waitUntil: 'load',
++            waitUntil: 'domcontentloaded',
+             timeout: 0,
+             referer: 'https://whatsapp.com/',
+         });

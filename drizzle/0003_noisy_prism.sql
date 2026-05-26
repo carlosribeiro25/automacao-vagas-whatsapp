@@ -1,0 +1,2 @@
+CREATE TYPE "public"."modality" AS ENUM('Remoto', 'Hibrido', 'Presencial', 'Home Office');--> statement-breakpoint
+ALTER TABLE "vagas" ALTER COLUMN "modality" SET DATA TYPE "public"."modality" USING "modality"::"public"."modality";
