@@ -1,5 +1,7 @@
-import {integer, pgTable, text, timestamp ,check, numeric, boolean, index} from 'drizzle-orm/pg-core'
+import {integer, pgTable, text, timestamp ,check, numeric, boolean, index, pgEnum, date} from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'; 
+
+export const modalityEnum = pgEnum('modality', ['Remoto', 'Hibrido', 'Presencial', 'Home Office' ])
 
 export const users = pgTable("users", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -16,7 +18,7 @@ export const users = pgTable("users", {
 export const vagas = pgTable('vagas', {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   title: text("title"),
-  messagem: text("mensagem"),
+  message: text("message"),
   mensagemId: integer("mensagem_id").references(() => mensagens.id),
   tipo_vaga: text("tipo_vaga"),
   description: text("description"),
@@ -25,7 +27,7 @@ export const vagas = pgTable('vagas', {
   texto_extraido: text("texto_extraido"),
   imagem_original_url: text("imagem_original_url"),
   requirements: text("requirements"),
-  modality: text("modality"),
+  modality: modalityEnum("modality"),
   salary: numeric("salary", { precision: 10, scale: 2}),
   benefits: text("benefits"),
   group_name: text("group_name"),
@@ -34,7 +36,8 @@ export const vagas = pgTable('vagas', {
   location: text("location"),
   is_job: boolean("is_job").default(true),
   processed_by_ai: boolean("processed_by_ai").default(false),
-  publisheAt: timestamp("published_at").defaultNow()
+  publisheAt: timestamp("published_at").defaultNow(),
+   
 }, (table) => [
   index("vagas_category_idx").on(table.category),
   index("vagas_location_idx").on(table.location)
@@ -67,8 +70,4 @@ export const mensagens = pgTable('mensagens', {
   index("mensagens_processed_idx").on(table.processed),
   index("mensagens_is_job_idx").on(table.is_job),
 ])
-
-
-
-
 
