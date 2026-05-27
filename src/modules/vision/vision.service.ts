@@ -12,7 +12,7 @@ export async function extractJobDataFromImage(
   const response =
     await openai.chat.completions.create({
 
-      model: 'gpt-4.1-mini',
+      model: 'gpt-5',
 
       messages: [
 
