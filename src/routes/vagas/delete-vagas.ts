@@ -12,7 +12,11 @@ export const deleteVagas: FastifyPluginAsyncZod = async (server) => {
 
             params: z.object({
                 id: z.coerce.number()
-            })
+            }),
+            response: {
+                200: z.object({ message: z.string()}),
+                404: z.object({ error: z.string()})
+            }
         }
     }, async (request, reply) => {
 
