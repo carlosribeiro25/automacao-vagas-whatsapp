@@ -9,9 +9,12 @@ import { fastifyCors } from '@fastify/cors'
 import { fastifySwagger } from '@fastify/swagger'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { routeDefault } from './routes/route-default.js'
-import { getVagas } from './routes/vagas/get-vagas.js'
+import { getVagas, getVagasFilters } from './routes/vagas/get-vagas.js'
 import { createVagas } from './routes/vagas/create-vagas.js'
 import { deleteVagas } from './routes/vagas/delete-vagas.js'
+import { getVagasbyId } from './routes/vagas/get-vagaById.js'
+import fastifyMultipart from '@fastify/multipart'
+import { visionRoutes } from './modules/vision/vision.routes.js'
 
 const server = fastify({
   logger: true,
@@ -44,5 +47,14 @@ server.register(routeDefault)
 server.register(getVagas)
 server.register(createVagas)
 server.register(deleteVagas)
+server.register(getVagasbyId)
+server.register(getVagasFilters)
+server.register(fastifyMultipart , {
+   limits: {
+    fileSize: 10_000_000
+  }
+})
+server.register(visionRoutes)
+
 
 export { server }
