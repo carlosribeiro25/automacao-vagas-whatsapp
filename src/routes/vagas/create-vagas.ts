@@ -1,5 +1,4 @@
 ;
-import { server } from "@/app.js";
 import { db } from "@/db/index.js";
 import { vagas } from "@/db/schema.js";
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
