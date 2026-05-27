@@ -5,3 +5,4 @@ export async function routeDefault(app: FastifyInstance) {
         return reply.status(200).send({ message: 'Nossa api esta em funcionamento'})
     } )
 }
+
