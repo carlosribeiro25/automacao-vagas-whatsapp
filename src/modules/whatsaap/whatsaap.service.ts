@@ -32,8 +32,15 @@ export async function processarMensagemWhatsapp(dados: unknown) {
         name: data.grupoNome,
         whatsaapId: data.grupoWappId,
       })
+      .onConflictDoNothing()
       .returning()
-    grupo = inserted[0]
+    grupo =
+      inserted[0] ??
+      (await db
+        .select()
+        .from(grupos_whatsapp)
+        .where(eq(grupos_whatsapp.whatsaapId, data.grupoWappId))
+        .then((r) => r[0]))
   }
 
   let imagemUrl: string | null = null
