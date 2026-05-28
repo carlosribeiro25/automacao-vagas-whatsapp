@@ -1,7 +1,25 @@
 import fs from 'fs'
+import path from 'path'
 import { openai } from '@/services/openai.services.js'
 import { vagaSchema } from '../vagas/vaga.schema.js'
+
+const SUPPORTED_MIME_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+}
+
 export async function extractJobDataFromImage(imagePath: string) {
+  const ext = path.extname(imagePath).slice(1).toLowerCase()
+  const mimeType = SUPPORTED_MIME_TYPES[ext]
+
+  if (!mimeType) {
+    console.log(`[Vision] Formato de imagem não suportado: .${ext}, ignorando.`)
+    return null
+  }
+
   const base64Image = fs.readFileSync(imagePath, {
     encoding: 'base64',
   })
@@ -114,7 +132,7 @@ Saída:
             type: 'image_url',
 
             image_url: {
-              url: `data:image/jpeg;base64,${base64Image}`,
+              url: `data:${mimeType};base64,${base64Image}`,
             },
           },
         ],
