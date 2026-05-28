@@ -1,4 +1,4 @@
-import z from "zod";
+import z from 'zod'
 
 export const vagaSchema = z.object({
   is_job: z.boolean(),
@@ -19,12 +19,9 @@ export const vagaSchema = z.object({
 
   requirements: z.string().nullable(),
 
-  modality: z.enum([
-   "Remoto",
-   "Hibrido",
-   "Presencial",
-   "Home Office" 
-  ]).nullable(),
+  modality: z
+    .enum(['Remoto', 'Hibrido', 'Presencial', 'Home Office'])
+    .nullable(),
 
   salary: z.coerce.number().nullable(),
 

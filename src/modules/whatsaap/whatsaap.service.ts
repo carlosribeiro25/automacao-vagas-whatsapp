@@ -7,85 +7,87 @@ import { extractJobDataFromImage } from '@/modules/vision/vision.service.js'
 import z from 'zod'
 
 export async function processarMensagemWhatsapp(dados: unknown) {
-    const dataSchema = z.object({
-        grupoWappId: z.string(),
-        grupoNome: z.string(),
-        autor: z.string(),
-        conteudo: z.string(),
-        imagemBuffer: z.instanceof(Buffer).nullable(),
-        imagemNome: z.string().nullable(),
-        dataMensagem: z.date(),
+  const dataSchema = z.object({
+    grupoWappId: z.string(),
+    grupoNome: z.string(),
+    autor: z.string(),
+    conteudo: z.string(),
+    imagemBuffer: z.instanceof(Buffer).nullable(),
+    imagemNome: z.string().nullable(),
+    dataMensagem: z.date(),
+  })
+
+  const data = dataSchema.parse(dados)
+
+  let grupo = await db
+    .select()
+    .from(grupos_whatsapp)
+    .where(eq(grupos_whatsapp.whatsaapId, data.grupoWappId))
+    .then((r) => r[0])
+
+  if (!grupo) {
+    const inserted = await db
+      .insert(grupos_whatsapp)
+      .values({
+        name: data.grupoNome,
+        whatsaapId: data.grupoWappId,
+      })
+      .returning()
+    grupo = inserted[0]
+  }
+
+  let imagemUrl: string | null = null
+
+  if (data.imagemBuffer && data.imagemNome) {
+    const uploadDir = path.resolve('uploads')
+
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir)
+    imagemUrl = path.join(uploadDir, data.imagemNome)
+    fs.writeFileSync(imagemUrl, data.imagemBuffer)
+  }
+
+  const [mensagem] = await db
+    .insert(mensagens)
+    .values({
+      grupoId: grupo.id,
+      autor: data.autor,
+      conteudo: data.conteudo,
+      tipo_mensagem: data.imagemBuffer ? 'imagem' : 'texto',
+      imagem_url: imagemUrl,
+      data: data.dataMensagem,
     })
+    .returning()
 
-    const data = dataSchema.parse(dados)
+  if (!imagemUrl) return
 
-    let grupo = await db
-        .select()
-        .from(grupos_whatsapp)
-        .where(eq(grupos_whatsapp.whatsaapId, data.grupoWappId))
-        .then((r) => r[0])
+  const result = await extractJobDataFromImage(imagemUrl)
 
-    if (!grupo) {
-        const inserted = await db
-            .insert(grupos_whatsapp)
-            .values({
-                name: data.grupoNome,
-                whatsaapId: data.grupoWappId
-            }).returning()
-        grupo = inserted[0]
-    }
+  await db
+    .update(mensagens)
+    .set({ processed: true, is_job: result?.is_job ?? false })
+    .where(eq(mensagens.id, mensagem.id))
 
-    let imagemUrl: string | null = null
+  if (!result?.is_job) return
 
-    if (data.imagemBuffer && data.imagemNome) {
-        const uploadDir = path.resolve('uploads')
-
-        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir)
-        imagemUrl = path.join(uploadDir, data.imagemNome)
-        fs.writeFileSync(imagemUrl, data.imagemBuffer)
-    }
-
-    const [mensagem] = await db
-        .insert(mensagens)
-        .values({
-            grupoId: grupo.id,
-            autor: data.autor,
-            conteudo: data.conteudo,
-            tipo_mensagem: data.imagemBuffer ? 'imagem' : 'texto',
-            imagem_url: imagemUrl,
-            data: data.dataMensagem,
-        }).returning()
-
-    if (!imagemUrl) return
-
-    const result = await extractJobDataFromImage(imagemUrl)
-
-    await db
-        .update(mensagens)
-        .set({ processed: true, is_job: result?.is_job ?? false })
-        .where(eq(mensagens.id, mensagem.id))
-
-    if (!result?.is_job) return
-
-    await db.insert(vagas).values({
-        mensagemId: mensagem.id,
-        title: result.title,
-        message: result.messagem,
-        tipo_vaga: result.tipo_vaga,
-        description: result.description,
-        category: result.category,
-        company: result.company,
-        texto_extraido: result.texto_extraido,
-        imagem_original_url: imagemUrl,
-        requirements: result.requirements,
-        modality: result.modality,
-        salary: result.salary ? String(result.salary) : null,
-        benefits: result.benefits,
-        group_name: data.grupoNome,
-        contact: result.contact,
-        link: result.link,
-        location: result.location,
-        is_job: true,
-        processed_by_ai: true,
-    })
+  await db.insert(vagas).values({
+    mensagemId: mensagem.id,
+    title: result.title,
+    message: result.messagem,
+    tipo_vaga: result.tipo_vaga,
+    description: result.description,
+    category: result.category,
+    company: result.company,
+    texto_extraido: result.texto_extraido,
+    imagem_original_url: imagemUrl,
+    requirements: result.requirements,
+    modality: result.modality,
+    salary: result.salary ? String(result.salary) : null,
+    benefits: result.benefits,
+    group_name: data.grupoNome,
+    contact: result.contact,
+    link: result.link,
+    location: result.location,
+    is_job: true,
+    processed_by_ai: true,
+  })
 }

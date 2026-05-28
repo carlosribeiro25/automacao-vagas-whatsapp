@@ -49,12 +49,11 @@ server.register(createVagas)
 server.register(deleteVagas)
 server.register(getVagasbyId)
 server.register(getVagasFilters)
-server.register(fastifyMultipart , {
-   limits: {
-    fileSize: 10_000_000
-  }
+server.register(fastifyMultipart, {
+  limits: {
+    fileSize: 10_000_000,
+  },
 })
 server.register(visionRoutes)
-
 
 export { server }

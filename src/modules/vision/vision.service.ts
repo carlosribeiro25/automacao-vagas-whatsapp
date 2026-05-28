@@ -1,25 +1,19 @@
 import fs from 'fs'
 import { openai } from '@/services/openai.services.js'
 import { vagaSchema } from '../vagas/vaga.schema.js'
-export async function extractJobDataFromImage(
-  imagePath: string
-) {
-
+export async function extractJobDataFromImage(imagePath: string) {
   const base64Image = fs.readFileSync(imagePath, {
     encoding: 'base64',
   })
 
-  const response =
-    await openai.chat.completions.create({
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5',
 
-      model: 'gpt-5',
+    messages: [
+      {
+        role: 'system',
 
-      messages: [
-
-        {
-          role: 'system',
-
-          content: `
+        content: `
 Você é um sistema especialista em análise de mensagens e imagens de vagas de emprego.
 
 Sua tarefa é:
@@ -105,46 +99,44 @@ Saída:
   "Marketing"
   etc.
           `,
-        },
-
-        {
-          role: 'user',
-
-          content: [
-
-            {
-              type: 'text',
-              text: 'Extraia os dados dessa vaga',
-            },
-
-            {
-              type: 'image_url',
-
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
-              },
-            },
-          ],
-        },
-      ],
-
-      response_format: {
-        type: 'json_object',
       },
-    })
 
-    if(!fs.existsSync(imagePath)) {
-        throw new Error('Image not found!')
-    }
+      {
+        role: 'user',
+
+        content: [
+          {
+            type: 'text',
+            text: 'Extraia os dados dessa vaga',
+          },
+
+          {
+            type: 'image_url',
+
+            image_url: {
+              url: `data:image/jpeg;base64,${base64Image}`,
+            },
+          },
+        ],
+      },
+    ],
+
+    response_format: {
+      type: 'json_object',
+    },
+  })
+
+  if (!fs.existsSync(imagePath)) {
+    throw new Error('Image not found!')
+  }
 
   const content = response.choices[0].message.content || '{}'
 
-  let parsed 
-   try {
+  let parsed
+  try {
     parsed = JSON.parse(content)
-
-  } catch (error){
-    console.error("Erro in parser JSON from AI")
+  } catch (error) {
+    console.error('Erro in parser JSON from AI')
 
     return null
   }
