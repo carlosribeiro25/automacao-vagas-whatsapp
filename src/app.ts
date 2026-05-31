@@ -9,7 +9,7 @@ import { fastifyCors } from '@fastify/cors'
 import { fastifySwagger } from '@fastify/swagger'
 import ScalarApiReference from '@scalar/fastify-api-reference'
 import { routeDefault } from './routes/route-default.js'
-import { getVagas, getVagasFilters } from './routes/vagas/get-vagas.js'
+import { getSearch, getVagas, getVagasFilters } from './routes/vagas/get-vagas.js'
 import { createVagas } from './routes/vagas/create-vagas.js'
 import { deleteVagas } from './routes/vagas/delete-vagas.js'
 import { getVagasbyId } from './routes/vagas/get-vagaById.js'
@@ -49,6 +49,7 @@ server.register(createVagas)
 server.register(deleteVagas)
 server.register(getVagasbyId)
 server.register(getVagasFilters)
+server.register(getSearch)
 server.register(fastifyMultipart, {
   limits: {
     fileSize: 10_000_000,
