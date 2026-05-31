@@ -4,7 +4,20 @@ import { db } from '@/db/index.js'
 import { grupos_whatsapp, mensagens, vagas } from '@/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { extractJobDataFromImage } from '@/modules/vision/vision.service.js'
+import { uploadImagemCloudinary } from '@/services/cloudinary/cloudinary.service.js' 
 import z from 'zod'
+
+type ModalityEnum = 'Remoto' | 'Hibrido' | 'Presencial' | 'Home Office'
+
+function normalizeModality(value: string | null): ModalityEnum | null {
+  if (!value) return null
+  const normalized = value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  if (normalized.includes('remoto')) return 'Remoto'
+  if (normalized.includes('hibrido') || normalized.includes('hybrid')) return 'Hibrido'
+  if (normalized.includes('home office')) return 'Home Office'
+  if (normalized.includes('presencial')) return 'Presencial'
+  return null
+}
 
 export async function processarMensagemWhatsapp(dados: unknown) {
   const dataSchema = z.object({
@@ -44,6 +57,7 @@ export async function processarMensagemWhatsapp(dados: unknown) {
   }
 
   let imagemUrl: string | null = null
+  let cloudinaryUrl: string | null = null
 
   if (data.imagemBuffer && data.imagemNome) {
     const uploadDir = path.resolve('uploads')
@@ -51,6 +65,7 @@ export async function processarMensagemWhatsapp(dados: unknown) {
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir)
     imagemUrl = path.join(uploadDir, data.imagemNome)
     fs.writeFileSync(imagemUrl, data.imagemBuffer)
+    cloudinaryUrl = await uploadImagemCloudinary(imagemUrl)
   }
 
   const [mensagem] = await db
@@ -68,6 +83,7 @@ export async function processarMensagemWhatsapp(dados: unknown) {
   if (!imagemUrl) return
 
   const result = await extractJobDataFromImage(imagemUrl)
+  fs.unlinkSync(imagemUrl)
 
   await db
     .update(mensagens)
@@ -85,9 +101,9 @@ export async function processarMensagemWhatsapp(dados: unknown) {
     category: result.category,
     company: result.company,
     texto_extraido: result.texto_extraido,
-    imagem_original_url: imagemUrl,
+    imagem_original_url: cloudinaryUrl,
     requirements: result.requirements,
-    modality: result.modality,
+    modality: normalizeModality(result.modality),
     salary: result.salary ? String(result.salary) : null,
     benefits: result.benefits,
     group_name: data.grupoNome,
