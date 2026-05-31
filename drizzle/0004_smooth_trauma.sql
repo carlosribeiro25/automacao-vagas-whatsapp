@@ -1,0 +1,1 @@
+ALTER TABLE "vagas" ADD COLUMN "search_vector" "tsvector";
