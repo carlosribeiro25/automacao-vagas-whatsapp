@@ -13,7 +13,7 @@ export const getVagas: FastifyPluginAsyncZod = async (app) => {
         summary: 'Essa rota lista todas as vagas',
         querystring: z.object({
           page: z.coerce.number().default(1),
-          limit: z.coerce.number().default(10)
+          limit: z.coerce.number().default(10),
         }),
 
         response: {
@@ -21,20 +21,16 @@ export const getVagas: FastifyPluginAsyncZod = async (app) => {
             vagas: z.array(z.any()),
             hasMore: z.boolean(),
             total: z.coerce.number(),
-            page: z.coerce.number()
+            page: z.coerce.number(),
           }),
           404: z.object({ error: z.string() }),
         },
       },
     },
     async (request, reply) => {
-
       const { page, limit } = request.query
 
-      const [{ total }] = await db
-        .select({ total: count() })
-        .from(vagas)
-
+      const [{ total }] = await db.select({ total: count() }).from(vagas)
 
       const result = await db
         .select()
@@ -51,9 +47,9 @@ export const getVagas: FastifyPluginAsyncZod = async (app) => {
         vagas: result,
         hasMore: page * limit < total,
         total,
-        page
+        page,
       })
-    }
+    },
   )
 }
 
@@ -108,65 +104,70 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
 }
 
 export const getSearch: FastifyPluginAsyncZod = async (app) => {
-  app.get('/search', {
-    schema: {
-      tags: ['Vagas'],
-      summary: 'Endpoint para  pesquisa de Vagas',
-      querystring: z.object({
-        q: z.string().trim().min(1),
-        page: z.coerce.number().min(1).default(1),
-        limit: z.coerce.number().min(100).default(10),
-      }),
-      response: {
-        200: z.object({
-          vagas: z.array(z.object({
-            id: z.coerce.number(),
-            title: z.string().nullish(),
-            tipo_vaga: z.string().nullish(),
-            description: z.string().nullish(),
-            category: z.string().nullish(),
-            company: z.string().nullish(),
-            requirements: z.string().nullish(),
-            modality: z
-              .enum(['Remoto', 'Hibrido', 'Presencial', 'Home Office'])
-              .nullish(),
-            salary: z.coerce.number().nullish(),
-            benefits: z.string().nullish(),
-            contact: z.string().nullish(),
-            link: z.string().nullish(),
-            location: z.string().nullish(),
-          })), total: z.number()
+  app.get(
+    '/search',
+    {
+      schema: {
+        tags: ['Vagas'],
+        summary: 'Endpoint para  pesquisa de Vagas',
+        querystring: z.object({
+          q: z.string().trim().min(1),
+          page: z.coerce.number().min(1).default(1),
+          limit: z.coerce.number().min(100).default(10),
         }),
-        404: z.object({ error: z.string() })
-      }
-    }
+        response: {
+          200: z.object({
+            vagas: z.array(
+              z.object({
+                id: z.coerce.number(),
+                title: z.string().nullish(),
+                tipo_vaga: z.string().nullish(),
+                description: z.string().nullish(),
+                category: z.string().nullish(),
+                company: z.string().nullish(),
+                requirements: z.string().nullish(),
+                modality: z
+                  .enum(['Remoto', 'Hibrido', 'Presencial', 'Home Office'])
+                  .nullish(),
+                salary: z.coerce.number().nullish(),
+                benefits: z.string().nullish(),
+                contact: z.string().nullish(),
+                link: z.string().nullish(),
+                location: z.string().nullish(),
+              }),
+            ),
+            total: z.number(),
+          }),
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { q, page, limit } = request.query
 
-  }, async (request, reply) => {
-    const { q, page, limit } = request.query
+      const query = sql`websearch_to_tsquery('portuguese', ${q})`
 
-    const query = sql`websearch_to_tsquery('portuguese', ${q})`
+      const [{ total }] = await db
+        .select({ total: count() })
+        .from(vagas)
+        .where(sql`search_vector @@ ${query}`)
 
-    const [{ total }] = await db
-      .select({ total: count() })
-      .from(vagas)
-      .where(sql`search_vector @@ ${query}`)
+      const resultSearch = await db
+        .select({
+          ...getTableColumns(vagas),
+          rank: sql<number>`ts_rank(search_vector, ${query})`,
+        })
+        .from(vagas)
+        .where(sql`search_vector @@ ${query}`)
+        .orderBy(sql`ts_rank(search_vector, ${query}) DESC`)
+        .limit(limit)
+        .offset((page - 1) * limit)
 
-    const resultSearch = await db
-      .select({
-        ...getTableColumns(vagas),
-        rank: sql<number>`ts_rank(search_vector, ${query})`
-      })
-      .from(vagas)
-      .where(sql`search_vector @@ ${query}`)
-      .orderBy(sql`ts_rank(search_vector, ${query}) DESC`)
-      .limit(limit)
-      .offset((page - 1) * limit)
-
-      if(!query || resultSearch.length === 0) {
-        return reply.status(404).send({ error: 'Vaga nao encontrada'})
+      if (!query || resultSearch.length === 0) {
+        return reply.status(404).send({ error: 'Vaga nao encontrada' })
       }
 
       return reply.status(200).send({ vagas: resultSearch, total })
-
-  })
+    },
+  )
 }

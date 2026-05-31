@@ -4,16 +4,20 @@ import { db } from '@/db/index.js'
 import { grupos_whatsapp, mensagens, vagas } from '@/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { extractJobDataFromImage } from '@/modules/vision/vision.service.js'
-import { uploadImagemCloudinary } from '@/services/cloudinary/cloudinary.service.js' 
+import { uploadImagemCloudinary } from '@/services/cloudinary/cloudinary.service.js'
 import z from 'zod'
 
 type ModalityEnum = 'Remoto' | 'Hibrido' | 'Presencial' | 'Home Office'
 
 function normalizeModality(value: string | null): ModalityEnum | null {
   if (!value) return null
-  const normalized = value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const normalized = value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
   if (normalized.includes('remoto')) return 'Remoto'
-  if (normalized.includes('hibrido') || normalized.includes('hybrid')) return 'Hibrido'
+  if (normalized.includes('hibrido') || normalized.includes('hybrid'))
+    return 'Hibrido'
   if (normalized.includes('home office')) return 'Home Office'
   if (normalized.includes('presencial')) return 'Presencial'
   return null

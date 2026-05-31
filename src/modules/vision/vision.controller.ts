@@ -61,7 +61,12 @@ export async function testVisionController(
 
     requirements: result.requirements,
 
-    modality: result.modality as 'Remoto' | 'Hibrido' | 'Presencial' | 'Home Office' | null,
+    modality: result.modality as
+      | 'Remoto'
+      | 'Hibrido'
+      | 'Presencial'
+      | 'Home Office'
+      | null,
 
     salary: result.salary ? String(result.salary) : null,
 
@@ -75,7 +80,7 @@ export async function testVisionController(
 
     location: result.location,
 
-    imagem_original_url: cloudinaryUrl
+    imagem_original_url: cloudinaryUrl,
   })
 
   return reply.send({

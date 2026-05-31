@@ -43,7 +43,7 @@ export function startWhatsappWorker() {
   }
 
   whatsappClient.on('message', handler)
-  
+
   whatsappClient.initialize()
   console.log('[Worker] WhatsApp worker iniciado.')
 }

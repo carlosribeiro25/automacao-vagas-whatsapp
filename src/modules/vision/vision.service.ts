@@ -163,7 +163,10 @@ Saída:
   try {
     return vagaSchema.parse(parsed)
   } catch (error) {
-    console.error('[Vision] Erro na validação do schema Zod:', JSON.stringify(error, null, 2))
+    console.error(
+      '[Vision] Erro na validação do schema Zod:',
+      JSON.stringify(error, null, 2),
+    )
     return null
   }
 }
