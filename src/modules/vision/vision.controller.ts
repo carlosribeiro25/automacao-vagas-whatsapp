@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { uploadImagemCloudinary } from '@/services/cloudinary/cloudinary.service.js'
 import { extractJobDataFromImage } from './vision.service.js'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { db } from '@/db/index.js'
@@ -20,16 +21,19 @@ export async function testVisionController(
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir)
   }
+
   // caminha imagem
   const filePath = path.join(uploadDir, data.filename)
 
   // salva imagem
   const buffer = await data.toBuffer()
-
   fs.writeFileSync(filePath, buffer)
 
+  const cloudinaryUrl = await uploadImagemCloudinary(filePath)
+  fs.unlinkSync(filePath)
+
   // Chama A ia
-  const result = await extractJobDataFromImage(filePath)
+  const result = await extractJobDataFromImage(cloudinaryUrl)
 
   // Ignora se nao for vaga
   if (!result?.is_job) {
@@ -57,7 +61,7 @@ export async function testVisionController(
 
     requirements: result.requirements,
 
-    modality: result.modality,
+    modality: result.modality as 'Remoto' | 'Hibrido' | 'Presencial' | 'Home Office' | null,
 
     salary: result.salary ? String(result.salary) : null,
 
@@ -71,7 +75,7 @@ export async function testVisionController(
 
     location: result.location,
 
-    imagem_original_url: filePath,
+    imagem_original_url: cloudinaryUrl
   })
 
   return reply.send({
