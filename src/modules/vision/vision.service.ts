@@ -154,10 +154,16 @@ Saída:
   try {
     parsed = JSON.parse(content)
   } catch (error) {
-    console.error('Erro in parser JSON from AI')
-
+    console.error('[Vision] Erro ao parsear JSON da IA:', content)
     return null
   }
 
-  return vagaSchema.parse(parsed)
+  console.log('[Vision] Resposta da IA:', JSON.stringify(parsed, null, 2))
+
+  try {
+    return vagaSchema.parse(parsed)
+  } catch (error) {
+    console.error('[Vision] Erro na validação do schema Zod:', JSON.stringify(error, null, 2))
+    return null
+  }
 }
