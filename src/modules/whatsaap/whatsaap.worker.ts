@@ -3,10 +3,12 @@ import { processarMensagemWhatsapp } from './whatsaap.service.js'
 import type pkg from 'whatsapp-web.js'
 
 export function startWhatsappWorker() {
-  whatsappClient.on('message', async (msg: pkg.Message) => {
+  const handler = async (msg: pkg.Message) => {
     console.log('[Worker] Mensagem recebida de:', msg.from)
     try {
-      if (!msg.from.endsWith('@g.us')) return
+      const isGrupo = msg.from.endsWith('@g.us')
+      const isCanal = msg.from.endsWith('@newsletter')
+      if (!isGrupo && !isCanal) return
 
       const chat = await msg.getChat()
       const grupoNome = chat.name
@@ -38,8 +40,10 @@ export function startWhatsappWorker() {
         error,
       )
     }
-  })
+  }
 
+  whatsappClient.on('message', handler)
+  
   whatsappClient.initialize()
   console.log('[Worker] WhatsApp worker iniciado.')
 }
