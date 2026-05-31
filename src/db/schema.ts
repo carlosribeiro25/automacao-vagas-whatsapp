@@ -8,7 +8,7 @@ import {
   boolean,
   index,
   pgEnum,
-  date,
+  customType
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -59,6 +59,9 @@ export const vagas = pgTable(
     is_job: boolean('is_job').default(true),
     processed_by_ai: boolean('processed_by_ai').default(false),
     publisheAt: timestamp('published_at').defaultNow(),
+    search_vector: customType< {data: string}> ({
+      dataType() { return 'tsvector' }
+    })('search_vector'),
   },
   (table) => [
     index('vagas_category_idx').on(table.category),
