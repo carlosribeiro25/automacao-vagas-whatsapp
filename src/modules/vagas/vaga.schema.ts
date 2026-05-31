@@ -19,9 +19,7 @@ export const vagaSchema = z.object({
 
   requirements: z.string().nullable(),
 
-  modality: z
-    .enum(['Remoto', 'Hibrido', 'Presencial', 'Home Office'])
-    .nullable(),
+  modality: z.string().nullable(),
 
   salary: z.coerce.number().nullable(),
 
