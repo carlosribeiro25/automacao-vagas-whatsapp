@@ -91,6 +91,7 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
         .select()
         .from(vagas)
         .where(and(...filters))
+        .orderBy(desc(vagas.publisheAt))
 
       if (!resultFilter || resultFilter.length === 0) {
         return reply
@@ -113,7 +114,7 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
         querystring: z.object({
           q: z.string().trim().min(1),
           page: z.coerce.number().min(1).default(1),
-          limit: z.coerce.number().min(100).default(10),
+          limit: z.coerce.number().min(1).max(100).default(10),
         }),
         response: {
           200: z.object({
