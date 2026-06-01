@@ -170,3 +170,76 @@ Saída:
     return null
   }
 }
+
+export async function extractJobDataFromText(texto: string) {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5',
+    messages: [
+      {
+        role: 'system',
+        content: `
+Você é um sistema especialista em análise de mensagens de vagas de emprego.
+
+Sua tarefa é:
+1. Identificar se o texto enviado é realmente uma vaga de emprego/estágio.
+2. Caso seja uma vaga: extrair os dados estruturados.
+3. Caso não seja: retornar "is_job": false e todos os outros campos null.
+
+Retorne SOMENTE JSON válido, sem markdown.
+
+{
+  "is_job": boolean,
+  "title": string | null,
+  "messagem": string | null,
+  "tipo_vaga": string | null,
+  "description": string | null,
+  "category": string | null,
+  "company": string | null,
+  "texto_extraido": string | null,
+  "requirements": string | null,
+  "modality": string | null,
+  "salary": number | null,
+  "benefits": string | null,
+  "group_name": string | null,
+  "contact": string | null,
+  "link": string | null,
+  "location": string | null
+}
+
+REGRAS:
+- Retorne APENAS JSON.
+- NÃO invente informações. Se não encontrar, retorne null.
+- salary deve ser número.
+- Considere vaga somente se houver contexto claro de emprego, estágio, trainee, contratação ou recrutamento.
+- Mensagens pessoais, memes, propagandas ou conversas NÃO são vagas.
+- texto_extraido deve conter o texto original da mensagem.
+- modality: "Remoto", "Hibrido", "Presencial" ou "Home Office".
+        `,
+      },
+      {
+        role: 'user',
+        content: texto,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  })
+
+  const content = response.choices[0].message.content || '{}'
+
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    console.error('[Vision] Erro ao parsear JSON do texto:', content)
+    return null
+  }
+
+  console.log('[Vision] Resposta texto da IA:', JSON.stringify(parsed, null, 2))
+
+  try {
+    return vagaSchema.parse(parsed)
+  } catch (error) {
+    console.error('[Vision] Erro na validação Zod (texto):', JSON.stringify(error, null, 2))
+    return null
+  }
+}
