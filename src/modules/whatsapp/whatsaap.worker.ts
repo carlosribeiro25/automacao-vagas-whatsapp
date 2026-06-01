@@ -1,15 +1,20 @@
 import { whatsappClient } from './whatsapp.client.js'
-import { processarMensagemWhatsapp } from './whatsapp.service.js'
 import type pkg from 'whatsapp-web.js'
 import { mensagemQueue } from './whatsapp.queue.js'
 
 export function startWhatsappWorker() {
   const handler = async (msg: pkg.Message) => {
-    console.log('[Worker] Mensagem recebida de:', msg.from)
+    console.log('[Worker] Mensagem recebida de:', msg.from, '→', msg.to)
     try {
-      const isGrupo = msg.from.endsWith('@g.us')
-      const isCanal = msg.from.endsWith('@newsletter')
-      if (!isGrupo && !isCanal) return
+      // msg.from = grupo quando recebida de outros
+      // msg.to   = grupo quando enviada pelo número conectado (message_create)
+      const origem = msg.from.endsWith('@g.us') || msg.from.endsWith('@newsletter')
+        ? msg.from
+        : msg.to?.endsWith('@g.us') || msg.to?.endsWith('@newsletter')
+          ? msg.to
+          : null
+
+      if (!origem) return
 
       const chat = await msg.getChat()
       const grupoNome = chat.name
@@ -25,8 +30,8 @@ export function startWhatsappWorker() {
           imagemNome = `${msg.id._serialized}.${extrair}`
         }
       }
-      await mensagemQueue.add('processar',{
-        grupoWappId: msg.from,
+      await mensagemQueue.add('processar', {
+        grupoWappId: origem,
         grupoNome,
         autor: msg.author ?? msg.from,
         conteudo: msg.body,
@@ -44,6 +49,7 @@ export function startWhatsappWorker() {
   }
 
   whatsappClient.on('message', handler)
+  whatsappClient.on('message_create', handler) // captura mensagens enviadas pelo próprio número
 
   whatsappClient.initialize()
   console.log('[Worker] WhatsApp worker iniciado.')
