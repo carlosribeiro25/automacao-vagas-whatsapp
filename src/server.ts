@@ -1,6 +1,6 @@
 import { server } from './app.js'
-import { startProcessor } from './modules/whatsaap/whatsaap.processor.js'
-import { startWhatsappWorker } from './modules/whatsaap/whatsaap.worker.js'
+import { startProcessor } from './modules/whatsapp/whatsapp.processor.js'
+import { startWhatsappWorker } from './modules/whatsapp/whatsaap.worker.js'
 
 startWhatsappWorker()
 startProcessor()
