@@ -6,13 +6,12 @@ export function startWhatsappWorker() {
   const handler = async (msg: pkg.Message) => {
     console.log('[Worker] Mensagem recebida de:', msg.from, '→', msg.to)
     try {
-      // msg.from = grupo quando recebida de outros
-      // msg.to   = grupo quando enviada pelo número conectado (message_create)
-      const origem = msg.from.endsWith('@g.us') || msg.from.endsWith('@newsletter')
-        ? msg.from
-        : msg.to?.endsWith('@g.us') || msg.to?.endsWith('@newsletter')
-          ? msg.to
-          : null
+      const origem =
+        msg.from.endsWith('@g.us') || msg.from.endsWith('@newsletter')
+          ? msg.from
+          : msg.to?.endsWith('@g.us') || msg.to?.endsWith('@newsletter')
+            ? msg.to
+            : null
 
       if (!origem) return
 
@@ -49,7 +48,7 @@ export function startWhatsappWorker() {
   }
 
   whatsappClient.on('message', handler)
-  whatsappClient.on('message_create', handler) // captura mensagens enviadas pelo próprio número
+  whatsappClient.on('message_create', handler)
 
   whatsappClient.initialize()
   console.log('[Worker] WhatsApp worker iniciado.')

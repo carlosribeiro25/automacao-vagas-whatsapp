@@ -22,20 +22,16 @@ export async function testVisionController(
     fs.mkdirSync(uploadDir)
   }
 
-  // caminha imagem
   const filePath = path.join(uploadDir, data.filename)
 
-  // salva imagem
   const buffer = await data.toBuffer()
   fs.writeFileSync(filePath, buffer)
 
   const cloudinaryUrl = await uploadImagemCloudinary(filePath)
   fs.unlinkSync(filePath)
 
-  // Chama A ia
   const result = await extractJobDataFromImage(cloudinaryUrl)
 
-  // Ignora se nao for vaga
   if (!result?.is_job) {
     return reply.send({
       success: false,
@@ -43,7 +39,6 @@ export async function testVisionController(
     })
   }
 
-  // Salva no banco
   await db.insert(vagas).values({
     title: result.title,
 
