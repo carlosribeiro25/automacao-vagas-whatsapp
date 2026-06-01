@@ -139,34 +139,50 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
             ),
             total: z.number(),
           }),
-          404: z.object({ error: z.string() }),
         },
       },
     },
     async (request, reply) => {
       const { q, page, limit } = request.query
 
-      const query = sql`websearch_to_tsquery('portuguese', ${q})`
+      // implementação da logica para busca na barra de pesquisa por palavras chave. linha 149 - 172.
+      const cleanQ = q.replace(/\bvagas?\b/gi, '').trim()
+      const searchTerm = cleanQ || q
+
+      const tsQuery = sql`plainto_tsquery('portuguese', ${searchTerm})`
+
+      const keywords = searchTerm.split(/\s+/).filter((w) => w.length >= 3)
+
+      const ilikeParts = keywords.map(
+        (kw) => sql`(
+          ${vagas.title} ILIKE ${'%' + kw + '%'} OR
+          ${vagas.description} ILIKE ${'%' + kw + '%'} OR
+          ${vagas.requirements} ILIKE ${'%' + kw + '%'} OR
+          ${vagas.category} ILIKE ${'%' + kw + '%'} OR
+          ${vagas.tipo_vaga} ILIKE ${'%' + kw + '%'}
+        )`,
+      )
+
+      const whereClause =
+        ilikeParts.length > 0
+          ? sql`search_vector @@ ${tsQuery} OR (${sql.join(ilikeParts, sql` AND `)})`
+          : sql`search_vector @@ ${tsQuery}`
 
       const [{ total }] = await db
         .select({ total: count() })
         .from(vagas)
-        .where(sql`search_vector @@ ${query}`)
+        .where(whereClause)
 
       const resultSearch = await db
         .select({
           ...getTableColumns(vagas),
-          rank: sql<number>`ts_rank(search_vector, ${query})`,
+          rank: sql<number>`ts_rank(search_vector, ${tsQuery})`,
         })
         .from(vagas)
-        .where(sql`search_vector @@ ${query}`)
-        .orderBy(sql`ts_rank(search_vector, ${query}) DESC`)
+        .where(whereClause)
+        .orderBy(sql`ts_rank(search_vector, ${tsQuery}) DESC`)
         .limit(limit)
         .offset((page - 1) * limit)
-
-      if (!query || resultSearch.length === 0) {
-        return reply.status(404).send({ error: 'Vaga nao encontrada' })
-      }
 
       return reply.status(200).send({ vagas: resultSearch, total })
     },
