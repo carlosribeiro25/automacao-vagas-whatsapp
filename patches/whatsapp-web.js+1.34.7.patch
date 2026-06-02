@@ -1,5 +1,5 @@
 diff --git a/node_modules/whatsapp-web.js/src/Client.js b/node_modules/whatsapp-web.js/src/Client.js
-index 800109e..507806e 100644
+index 800109e..337be14 100644
 --- a/node_modules/whatsapp-web.js/src/Client.js
 +++ b/node_modules/whatsapp-web.js/src/Client.js
 @@ -393,7 +393,7 @@ class Client extends EventEmitter {
@@ -11,12 +11,32 @@ index 800109e..507806e 100644
                      .catch((_) => _);
              },
          );
-@@ -485,7 +485,7 @@ class Client extends EventEmitter {
+@@ -485,12 +485,15 @@ class Client extends EventEmitter {
          }
  
          await page.goto(WhatsWebURL, {
 -            waitUntil: 'load',
-+            waitUntil: 'domcontentloaded',
++            waitUntil: 'networkidle2',
              timeout: 0,
              referer: 'https://whatsapp.com/',
          });
+ 
+-        await this.inject();
++        await this.inject().catch(() => {
++            // A página pode navegar internamente após o goto (handshake de sessão),
++            // destruindo o contexto. O framenavigated vai chamar inject() novamente.
++        });
+ 
+         this.pupPage.on('framenavigated', async (frame) => {
+             if (frame.url().includes('post_logout=1') || this.lastLoggedOut) {
+@@ -500,7 +503,9 @@ class Client extends EventEmitter {
+                 await this.authStrategy.afterBrowserInitialized();
+                 this.lastLoggedOut = false;
+             }
+-            await this.inject();
++            await this.inject().catch(() => {
++                // Contexto pode ser destruído por navegações intermediárias — ignorar
++            });
+         });
+     }
+ 

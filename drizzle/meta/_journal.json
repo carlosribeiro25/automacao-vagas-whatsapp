@@ -43,6 +43,13 @@
       "when": 1780245999999,
       "tag": "0005_search_vector_generated",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780367770687,
+      "tag": "0006_chilly_whizzer",
+      "breakpoints": true
     }
   ]
 }

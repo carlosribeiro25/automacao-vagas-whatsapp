@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "updateAt" timestamp with time zone DEFAULT now();
