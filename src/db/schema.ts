@@ -29,6 +29,7 @@ export const users = pgTable(
     picture: text('picture'),
     password: text('password').notNull(),
     creatAt: timestamp({ withTimezone: true }).defaultNow(),
+    updateAt: timestamp({ withTimezone: true }).defaultNow()
   },
   (table) => [
     check('users_name_length_check', sql`length(${table.name}) >= 4`),
