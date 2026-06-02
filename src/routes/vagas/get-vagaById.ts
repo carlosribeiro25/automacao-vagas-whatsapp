@@ -37,6 +37,7 @@ export const getVagasbyId: FastifyPluginAsyncZod = async (server) => {
             link: z.string().nullish(),
             location: z.string().nullish(),
             is_job: z.boolean().nullish(),
+            publisheAt: z.date().nullish()
           }),
           404: z.object({ error: z.string() }),
         },
@@ -49,9 +50,9 @@ export const getVagasbyId: FastifyPluginAsyncZod = async (server) => {
 
       if (!getvagasId) {
         return reply.status(404).send({ error: 'Vaga nao encontrada' })
-      } else {
-        return getvagasId
       }
+
+      return reply.status(200).send(getvagasId)
     },
   )
 }
