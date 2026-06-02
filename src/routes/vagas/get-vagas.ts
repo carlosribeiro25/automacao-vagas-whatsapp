@@ -135,10 +135,12 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
                 contact: z.string().nullish(),
                 link: z.string().nullish(),
                 location: z.string().nullish(),
+                publisheAt: z.date().nullish()
               }),
             ),
             total: z.number(),
           }),
+          404: z.object({ error: z.string() }),
         },
       },
     },
@@ -183,6 +185,10 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
         .orderBy(sql`ts_rank(search_vector, ${tsQuery}) DESC`)
         .limit(limit)
         .offset((page - 1) * limit)
+
+      if (resultSearch.length === 0) {
+        return reply.status(404).send({ error: 'Nenhuma vaga encontrada para a pesquisa' })
+      }
 
       return reply.status(200).send({ vagas: resultSearch, total })
     },
