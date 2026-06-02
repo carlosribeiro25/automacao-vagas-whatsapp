@@ -32,6 +32,13 @@ export const createVagas: FastifyPluginAsyncZod = async (server) => {
           location: z.string().nullish(),
           is_job: z.boolean(),
         }),
+        response: {
+          201: z.object({
+            message: z.string(),
+            vagaId: z.coerce.number()
+          }),
+          400: z.object({ error: z.string()})
+        }
       },
     },
     async (request, reply) => {
@@ -72,7 +79,7 @@ export const createVagas: FastifyPluginAsyncZod = async (server) => {
             requirements,
             modality,
             salary:
-              salary !== null && salary !== undefined ? String(salary) : null,
+            salary !== null && salary !== undefined ? String(salary) : null,
             benefits,
             group_name,
             contact,
@@ -88,7 +95,7 @@ export const createVagas: FastifyPluginAsyncZod = async (server) => {
         })
       } catch (error) {
         console.error('Erro ao cadastrar vaga:', error)
-        return reply.status(400).send({ error: 'Erro ao cadastrar uma vaga' })
+        return reply.status(400).send({ error: 'Dados inválidos ou malformados' })
       }
     },
   )
