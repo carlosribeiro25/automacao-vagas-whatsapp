@@ -19,6 +19,8 @@ import { deleteVagas } from './routes/vagas/delete-vagas.js'
 import { getVagasbyId } from './routes/vagas/get-vagaById.js'
 import fastifyMultipart from '@fastify/multipart'
 import { visionRoutes } from './modules/vision/vision.routes.js'
+import { registerUser } from './routes/Users/create-user.js'
+import { updateUser } from './routes/Users/update-user.js'
 
 const server = fastify({
   logger: true,
@@ -60,5 +62,8 @@ server.register(fastifyMultipart, {
   },
 })
 server.register(visionRoutes)
+
+server.register(registerUser)
+server.register(updateUser)
 
 export { server }
