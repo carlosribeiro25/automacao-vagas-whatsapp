@@ -135,7 +135,7 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
                 contact: z.string().nullish(),
                 link: z.string().nullish(),
                 location: z.string().nullish(),
-                publisheAt: z.date().nullish()
+                publisheAt: z.date().nullish(),
               }),
             ),
             total: z.number(),
@@ -187,7 +187,9 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
         .offset((page - 1) * limit)
 
       if (resultSearch.length === 0) {
-        return reply.status(404).send({ error: 'Nenhuma vaga encontrada para a pesquisa' })
+        return reply
+          .status(404)
+          .send({ error: 'Nenhuma vaga encontrada para a pesquisa' })
       }
 
       return reply.status(200).send({ vagas: resultSearch, total })

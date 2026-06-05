@@ -88,9 +88,7 @@
         "grupos_Whatsaap_whatsaapId_unique": {
           "name": "grupos_Whatsaap_whatsaapId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "whatsaapId"
-          ]
+          "columns": ["whatsaapId"]
         }
       },
       "policies": {},
@@ -212,12 +210,8 @@
           "name": "mensagens_grupo_id_grupos_Whatsaap_id_fk",
           "tableFrom": "mensagens",
           "tableTo": "grupos_Whatsaap",
-          "columnsFrom": [
-            "grupo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["grupo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -301,9 +295,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -504,12 +496,8 @@
           "name": "vagas_mensagem_id_mensagens_id_fk",
           "tableFrom": "vagas",
           "tableTo": "mensagens",
-          "columnsFrom": [
-            "mensagem_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mensagem_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -525,12 +513,7 @@
     "public.modality": {
       "name": "modality",
       "schema": "public",
-      "values": [
-        "Remoto",
-        "Hibrido",
-        "Presencial",
-        "Home Office"
-      ]
+      "values": ["Remoto", "Hibrido", "Presencial", "Home Office"]
     }
   },
   "schemas": {},
