@@ -50,6 +50,13 @@
       "when": 1780367770687,
       "tag": "0006_chilly_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780675185076,
+      "tag": "0007_careless_zodiak",
+      "breakpoints": true
     }
   ]
 }

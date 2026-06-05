@@ -10,6 +10,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx --env-file=.env src/db/seed.ts",
     "postinstall": "patch-package",
     "test": "dotenv -e .env vitest run"
   },
@@ -38,6 +39,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@scalar/fastify-api-reference": "^1.57.5",
     "@types/supertest": "^7.2.0",
+    "argon2": "^0.44.0",
     "bullmq": "^5.77.6",
     "cloudinary": "^2.10.0",
     "dotenv": "^17.4.2",
