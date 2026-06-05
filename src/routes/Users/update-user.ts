@@ -13,10 +13,13 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
           id: z.coerce.number(),
         }),
         body: z.object({
-          email: z.email(),
-          password: z.string(),
-          phone: z.string(),
-        }),
+          email: z.email().optional(),
+          password: z.string().optional(),
+          phone: z.string().optional(),
+        }).refine(
+          (data) => Object.keys(data).length > 0,
+          { message: 'Informe ao menos um campo para atualizar' }
+        ),
         response: {
           200: z.object({ message: z.string() }),
           400: z.object({ error: z.string() }),
@@ -29,10 +32,17 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
       const { id } = request.params
       const { email, password, phone } = request.body
 
+      // Monta o objeto só com os campos enviados pelo cliente
+      const fields = {
+        ...(email !== undefined && { email }),
+        ...(password !== undefined && { password }),
+        ...(phone !== undefined && { phone }),
+      }
+
       try {
         const updated = await db
           .update(users)
-          .set({ email, password, phone })
+          .set(fields)
           .where(eq(users.id, id))
           .returning({ id: users.id })
 
