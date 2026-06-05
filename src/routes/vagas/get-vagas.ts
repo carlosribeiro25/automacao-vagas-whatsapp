@@ -67,7 +67,7 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
             .nullish(),
           tipo_vaga: z.string().nullish(),
           location: z.string().nullish(),
-          publisheAt: z.string().nullish(),
+          publisheAt: z.date().nullish(),
         }),
         response: {
           200: z.object({ vagas: z.array(z.any()) }),
