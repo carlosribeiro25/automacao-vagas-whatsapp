@@ -21,6 +21,7 @@ import fastifyMultipart from '@fastify/multipart'
 import { visionRoutes } from './modules/vision/vision.routes.js'
 import { registerUser } from './routes/Users/create-user.js'
 import { updateUser } from './routes/Users/update-user.js'
+import { authRouter } from './routes/login.js'
 
 const server = fastify({
   logger: true,
@@ -65,5 +66,6 @@ server.register(visionRoutes)
 
 server.register(registerUser)
 server.register(updateUser)
+server.register(authRouter)
 
 export { server }
