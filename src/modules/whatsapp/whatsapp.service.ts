@@ -12,7 +12,7 @@ import z from 'zod'
 
 type ModalityEnum = 'Remoto' | 'Hibrido' | 'Presencial' | 'Home Office'
 
-function normalizeModality(value: string | null): ModalityEnum | null {
+export function normalizeModality(value: string | null): ModalityEnum | null {
   if (!value) return null
   const normalized = value
     .toLowerCase()
