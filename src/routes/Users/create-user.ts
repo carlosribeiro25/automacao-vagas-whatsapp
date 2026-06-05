@@ -11,30 +11,32 @@ export const registerUser: FastifyPluginAsyncZod = async (server) => {
                 email: z.email(),
                 phone: z.string(),
                 password: z.string(),
-                picture: z.string().nullable()
             }),
 
             response: {
-                201: z.object({ message: z.string(), usersId: z.number()}),
+                201: z.object({ message: z.string(), usersId: z.number(), name: z.string(), email: z.string(), phone: z.string(), password: z.string() }),
                 400: z.object({ error: z.string()}),
                 409: z.object({ duplicate: z.string()})
             }
         }
     }, async (request, reply) => {
 
-        const { name, email, phone, password, picture } = request.body
+        const { name, email, phone, password } = request.body
 
         try {
             const createUser = await db
             .insert(users)
-            .values({ name, email, phone, password, picture })
-            .returning({id: users.id})
+            .values({ name, email, phone, password })
+            .returning()
 
-            reply.status(201).send({ message: 'Usuario cadastrado com sucesso', usersId: createUser[0].id })
+            reply.status(201).send({ message: 'Usuario cadastrado com sucesso', usersId: createUser[0].id, name: createUser[0].name, email: createUser[0].email, phone: createUser[0].phone, password: createUser[0].password })
 
         } catch (error: any) {
             const duplicate = [error?.code, error?.cause?.code].includes('23505')
-            return reply.status(duplicate ? 409 : 400).send({ error: duplicate ? 'Email ja esta cadastrado' : 'Dados inválidos ou malformados'})
+            if (duplicate) {
+                return reply.status(409).send({ duplicate: 'Email ja esta cadastrado' })
+            }
+            return reply.status(400).send({ error: 'Dados inválidos ou malformados' })
         }
     })
 }
