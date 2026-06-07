@@ -57,6 +57,13 @@
       "when": 1780675185076,
       "tag": "0007_careless_zodiak",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780727161030,
+      "tag": "0008_dusty_grey_gargoyle",
+      "breakpoints": true
     }
   ]
 }
