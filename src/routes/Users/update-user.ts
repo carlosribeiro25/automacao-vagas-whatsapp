@@ -3,11 +3,16 @@ import { users } from '@/db/schema.js'
 import { eq } from 'drizzle-orm'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import z from 'zod'
+import { checkAutentication } from '../hooks/check-request-jwt.js'
+import { hash } from 'argon2'
 
 export const updateUser: FastifyPluginAsyncZod = async (server) => {
   server.patch(
     '/updateUser/:id',
     {
+      preHandler: [
+        checkAutentication
+      ],
       schema: {
         params: z.object({
           id: z.coerce.number(),
@@ -16,10 +21,8 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
           email: z.email().optional(),
           password: z.string().optional(),
           phone: z.string().optional(),
-        }).refine(
-          (data) => Object.keys(data).length > 0,
-          { message: 'Informe ao menos um campo para atualizar' }
-        ),
+          picture: z.string().optional()
+        }),
         response: {
           200: z.object({ message: z.string() }),
           400: z.object({ error: z.string() }),
@@ -29,20 +32,23 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
       },
     },
     async (request, reply) => {
-      const { id } = request.params
-      const { email, password, phone } = request.body
 
-      // Monta o objeto só com os campos enviados pelo cliente
-      const fields = {
-        ...(email !== undefined && { email }),
-        ...(password !== undefined && { password }),
-        ...(phone !== undefined && { phone }),
-      }
+      const { id } = request.params
+      const { email, password, phone, picture } = request.body
+
+       const updateData: any = {}
+        if (email) updateData.email = email
+        if (phone) updateData.telefone = phone
+        if (picture) updateData.picture = picture
+        if (password) {
+            const hashed = await hash(password)
+            updateData.password = hashed
+        }
 
       try {
         const updated = await db
           .update(users)
-          .set(fields)
+          .set(updateData)
           .where(eq(users.id, id))
           .returning({ id: users.id })
 
