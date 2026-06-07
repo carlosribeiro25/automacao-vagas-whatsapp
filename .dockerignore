@@ -1,0 +1,11 @@
+node_modules
+.env
+implementations.txt
+.wwebjs_auth
+.wwebjs_cache
+request.http
+uploads/
+vitest.config.ts
+tests/
+factore/
+coverage/
