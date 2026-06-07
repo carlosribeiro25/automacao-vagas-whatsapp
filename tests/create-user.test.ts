@@ -4,81 +4,81 @@ import { server } from '../src/app'
 import { faker } from '@faker-js/faker'
 
 test('Usuario criado com sucesso', async () => {
-    await server.ready()
+  await server.ready()
 
-    const response = request(server.server)
+  const response = request(server.server)
     .post('/registerUser')
     .set('Content-Type', 'application/json')
     .send({
-        name: faker.person.fullName(),
-        email: faker.internet.email(),
-        phone: faker.phone.number(),
-        password: faker.string.uuid(),
-        role: 'user'
+      name: faker.person.fullName(),
+      email: faker.internet.email(),
+      phone: faker.phone.number(),
+      password: faker.string.uuid(),
+      role: 'user',
     })
 
-    expect((await response).status).toEqual(201)
-    expect( (await response).body).toEqual({
-        message: 'Usuario cadastrado com sucesso',
-        usersId: expect.any(Number)
-    })
+  expect((await response).status).toEqual(201)
+  expect((await response).body).toEqual({
+    message: 'Usuario cadastrado com sucesso',
+    usersId: expect.any(Number),
+  })
 })
 
 test('Campos obrigatorios ausentes', async () => {
-    await server.ready()
+  await server.ready()
 
-    const response = request(server.server)
+  const response = request(server.server)
     .post('/registerUser')
     .set('Content-Type', 'application/json')
     .send({
-        name: '',
-        email: 'sjdhshd@gmail.com',
-        phone: faker.phone.number(),
-        password: '',
-        role: 'user'
+      name: '',
+      email: 'sjdhshd@gmail.com',
+      phone: faker.phone.number(),
+      password: '',
+      role: 'user',
     })
 
-    expect((await response).status).toEqual(400)
-    expect( (await response).body).toEqual({
-        error: 'Dados inválidos ou malformados'
-    })
+  expect((await response).status).toEqual(400)
+  expect((await response).body).toEqual({
+    error: 'Dados inválidos ou malformados',
+  })
 })
 
 test('Nome com menos de 4 caracteres → 400', async () => {
-    await server.ready()
+  await server.ready()
 
-    const response = request(server.server)
+  const response = request(server.server)
     .post('/registerUser')
     .set('Content-Type', 'application/json')
     .send({
-        name: 'Ana',
-        email: faker.internet.email(),
-        phone: faker.phone.number(),
-        password: faker.string.uuid(),
-        role: 'user'
+      name: 'Ana',
+      email: faker.internet.email(),
+      phone: faker.phone.number(),
+      password: faker.string.uuid(),
+      role: 'user',
     })
 
-    expect((await response).status).toEqual(400)
-    expect((await response).body).toEqual({
-        error: 'Dados inválidos ou malformados'
-    })
+  expect((await response).status).toEqual(400)
+  expect((await response).body).toEqual({
+    error: 'Dados inválidos ou malformados',
+  })
 })
 
 test('Conflitos de email existente', async () => {
-    await server.ready()
+  await server.ready()
 
-    const response = request(server.server)
+  const response = request(server.server)
     .post('/registerUser')
     .set('Content-Type', 'application/json')
     .send({
-        name: faker.person.fullName(),
-        email: 'Jose10@hotmail.com',
-        phone: faker.phone.number(),
-        password: faker.string.uuid()
+      name: faker.person.fullName(),
+      email: 'Jose10@hotmail.com',
+      phone: faker.phone.number(),
+      password: faker.string.uuid(),
     })
 
-    expect((await response).status).toEqual(409)
-    expect( (await response).body).toEqual({
-        duplicate: 'Email ja esta cadastrado'
-    })
+  expect((await response).status).toEqual(409)
+  expect((await response).body).toEqual({
+    duplicate: 'Email ja esta cadastrado',
+  })
 })

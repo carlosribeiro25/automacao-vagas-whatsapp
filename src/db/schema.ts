@@ -19,7 +19,7 @@ export const modalityEnum = pgEnum('modality', [
   'Home Office',
 ])
 
-export const roleEnum = pgEnum('user_role', ['manager', 'user' ])
+export const roleEnum = pgEnum('user_role', ['manager', 'user'])
 
 export const users = pgTable(
   'users',
@@ -32,7 +32,7 @@ export const users = pgTable(
     password: text('password').notNull(),
     creatAt: timestamp({ withTimezone: true }).defaultNow(),
     updateAt: timestamp({ withTimezone: true }).defaultNow(),
-    role: roleEnum().default('user')
+    role: roleEnum().default('user'),
   },
   (table) => [
     check('users_name_length_check', sql`length(${table.name}) >= 4`),

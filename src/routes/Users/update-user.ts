@@ -10,9 +10,7 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
   server.patch(
     '/updateUser/:id',
     {
-      preHandler: [
-        checkAutentication
-      ],
+      preHandler: [checkAutentication],
       schema: {
         params: z.object({
           id: z.coerce.number(),
@@ -21,7 +19,7 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
           email: z.email().optional(),
           password: z.string().optional(),
           phone: z.string().optional(),
-          picture: z.string().optional()
+          picture: z.string().optional(),
         }),
         response: {
           200: z.object({ message: z.string() }),
@@ -32,18 +30,17 @@ export const updateUser: FastifyPluginAsyncZod = async (server) => {
       },
     },
     async (request, reply) => {
-
       const { id } = request.params
       const { email, password, phone, picture } = request.body
 
-       const updateData: any = {}
-        if (email) updateData.email = email
-        if (phone) updateData.telefone = phone
-        if (picture) updateData.picture = picture
-        if (password) {
-            const hashed = await hash(password)
-            updateData.password = hashed
-        }
+      const updateData: any = {}
+      if (email) updateData.email = email
+      if (phone) updateData.telefone = phone
+      if (picture) updateData.picture = picture
+      if (password) {
+        const hashed = await hash(password)
+        updateData.password = hashed
+      }
 
       try {
         const updated = await db

@@ -43,13 +43,20 @@ vi.mock('fs', () => ({
 }))
 
 import { db } from '../src/db/index.js'
-import { extractJobDataFromImage, extractJobDataFromText } from '../src/modules/vision/vision.service.js'
+import {
+  extractJobDataFromImage,
+  extractJobDataFromText,
+} from '../src/modules/vision/vision.service.js'
 import { uploadImagemCloudinary } from '../src/services/cloudinary/cloudinary.service.js'
 import { processarMensagemWhatsapp } from '../src/modules/whatsapp/whatsapp.service.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-const grupoExistente = { id: 1, name: 'Grupo Vagas TI', whatsaapId: 'grupo-001' }
+const grupoExistente = {
+  id: 1,
+  name: 'Grupo Vagas TI',
+  whatsaapId: 'grupo-001',
+}
 const mensagemInserida = { id: 42 }
 
 const vagaExtraida = {
@@ -91,14 +98,20 @@ const dadosTexto = {
 function setupDbMocks({
   grupoExiste = true,
   grupoInserido = grupoExistente,
-}: { grupoExiste?: boolean; grupoInserido?: typeof grupoExistente } = {}) {
+}: {
+  grupoExiste?: boolean
+  grupoInserido?: typeof grupoExistente
+} = {}) {
   const mocked = vi.mocked(db)
 
   // db.select().from().where().then(r => r[0])
   // Retorna o grupo se existir, undefined se não
-  const thenSelectMock = vi.fn().mockImplementation((fn: (r: typeof grupoExistente[]) => typeof grupoExistente) =>
-    Promise.resolve(fn(grupoExiste ? [grupoExistente] : []))
-  )
+  const thenSelectMock = vi
+    .fn()
+    .mockImplementation(
+      (fn: (r: (typeof grupoExistente)[]) => typeof grupoExistente) =>
+        Promise.resolve(fn(grupoExiste ? [grupoExistente] : [])),
+    )
   const whereMock = vi.fn().mockReturnValue({ then: thenSelectMock })
   const fromMock = vi.fn().mockReturnValue({ where: whereMock })
   mocked.select.mockReturnValue({ from: fromMock } as any)
@@ -109,12 +122,20 @@ function setupDbMocks({
   // Cada chamada ao insert precisa retornar a cadeia correta.
   // Usamos mockReturnValueOnce em ordem de chamada:
 
-  const insertGrupoReturning = vi.fn().mockResolvedValue(grupoExiste ? [] : [grupoInserido])
-  const insertGrupoOnConflict = vi.fn().mockReturnValue({ returning: insertGrupoReturning })
-  const insertGrupoValues = vi.fn().mockReturnValue({ onConflictDoNothing: insertGrupoOnConflict })
+  const insertGrupoReturning = vi
+    .fn()
+    .mockResolvedValue(grupoExiste ? [] : [grupoInserido])
+  const insertGrupoOnConflict = vi
+    .fn()
+    .mockReturnValue({ returning: insertGrupoReturning })
+  const insertGrupoValues = vi
+    .fn()
+    .mockReturnValue({ onConflictDoNothing: insertGrupoOnConflict })
 
   const insertMensagemReturning = vi.fn().mockResolvedValue([mensagemInserida])
-  const insertMensagemValues = vi.fn().mockReturnValue({ returning: insertMensagemReturning })
+  const insertMensagemValues = vi
+    .fn()
+    .mockReturnValue({ returning: insertMensagemReturning })
 
   const insertVagasValues = vi.fn().mockResolvedValue([])
 
@@ -155,7 +176,11 @@ beforeEach(() => {
 test('input inválido (sem grupoWappId) → lança ZodError', async () => {
   // Não precisamos configurar db: o erro deve ser lançado antes de qualquer
   // chamada ao banco
-  const dadosInvalidos = { grupoNome: 'Grupo', autor: '55119', conteudo: 'texto' }
+  const dadosInvalidos = {
+    grupoNome: 'Grupo',
+    autor: '55119',
+    conteudo: 'texto',
+  }
 
   await expect(processarMensagemWhatsapp(dadosInvalidos)).rejects.toThrow()
 
@@ -215,12 +240,12 @@ test('mensagem de texto que É vaga → marca processed:true e insere em vagas',
     expect.objectContaining({
       title: 'Dev Frontend',
       category: 'Tecnologia',
-      modality: 'Remoto',       // passou por normalizeModality
-      salary: '5000',           // convertido para string
+      modality: 'Remoto', // passou por normalizeModality
+      salary: '5000', // convertido para string
       is_job: true,
       processed_by_ai: true,
       group_name: dadosTexto.grupoNome,
-    })
+    }),
   )
 })
 
@@ -231,7 +256,9 @@ test('mensagem de texto que É vaga → marca processed:true e insere em vagas',
 test('mensagem com imagem → faz upload no Cloudinary e chama extractJobDataFromImage', async () => {
   const { insertVagasValues } = setupDbMocks()
 
-  vi.mocked(uploadImagemCloudinary).mockResolvedValueOnce('https://fake-cdn.com/img.png')
+  vi.mocked(uploadImagemCloudinary).mockResolvedValueOnce(
+    'https://fake-cdn.com/img.png',
+  )
   vi.mocked(extractJobDataFromImage).mockResolvedValueOnce(vagaExtraida)
 
   const dadosImagem = {
@@ -254,14 +281,16 @@ test('mensagem com imagem → faz upload no Cloudinary e chama extractJobDataFro
     expect.objectContaining({
       imagem_original_url: 'https://fake-cdn.com/img.png',
       is_job: true,
-    })
+    }),
   )
 })
 
 test('mensagem com imagem que NÃO é vaga → NÃO insere em vagas', async () => {
   const { insertVagasValues } = setupDbMocks()
 
-  vi.mocked(uploadImagemCloudinary).mockResolvedValueOnce('https://fake-cdn.com/img.png')
+  vi.mocked(uploadImagemCloudinary).mockResolvedValueOnce(
+    'https://fake-cdn.com/img.png',
+  )
   vi.mocked(extractJobDataFromImage).mockResolvedValueOnce(naoEVaga)
 
   const dadosImagem = {

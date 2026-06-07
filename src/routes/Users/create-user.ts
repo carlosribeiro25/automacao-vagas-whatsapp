@@ -14,13 +14,13 @@ export const registerUser: FastifyPluginAsyncZod = async (server) => {
           email: z.email(),
           phone: z.string(),
           password: z.string(),
-          role: z.enum(['manager', 'user']).default('user').optional()
+          role: z.enum(['manager', 'user']).default('user').optional(),
         }),
 
         response: {
           201: z.object({
             message: z.string(),
-            usersId: z.coerce.number()
+            usersId: z.coerce.number(),
           }),
           400: z.object({ error: z.string() }),
           409: z.object({ duplicate: z.string() }),
@@ -31,20 +31,17 @@ export const registerUser: FastifyPluginAsyncZod = async (server) => {
       const { name, email, phone, password, role } = request.body
 
       try {
-
         const hashPassword = await hash(password)
 
         const createUser = await db
           .insert(users)
           .values({ name, email, phone, password: hashPassword, role })
-          .returning({ id: users.id})
+          .returning({ id: users.id })
 
-        reply
-          .status(201)
-          .send({
-            message: 'Usuario cadastrado com sucesso',
-            usersId: createUser[0].id
-          })
+        reply.status(201).send({
+          message: 'Usuario cadastrado com sucesso',
+          usersId: createUser[0].id,
+        })
       } catch (error: any) {
         const duplicate = [error?.code, error?.cause?.code].includes('23505')
         if (duplicate) {

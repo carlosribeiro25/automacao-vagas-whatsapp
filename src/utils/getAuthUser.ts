@@ -1,10 +1,10 @@
-import { FastifyRequest } from "fastify"
+import { FastifyRequest } from 'fastify'
 export function getAuthUserReq(request: FastifyRequest) {
-    const user = request.user
+  const user = request.user
 
-    if(!user) {
-        throw new Error('Invalid autentication')
-    }
+  if (!user) {
+    throw new Error('Invalid autentication')
+  }
 
-    return user
+  return user
 }

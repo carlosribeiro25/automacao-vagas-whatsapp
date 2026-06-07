@@ -10,10 +10,7 @@ export const deleteVagas: FastifyPluginAsyncZod = async (server) => {
   server.delete(
     '/vagas/:id',
     {
-      preHandler: [
-        checkAutentication,
-        checkUserRole('manager')
-      ],
+      preHandler: [checkAutentication, checkUserRole('manager')],
       schema: {
         tags: ['Vagas'],
         summary: 'Endpoint para deletar uma vaga',

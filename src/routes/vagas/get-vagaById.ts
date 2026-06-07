@@ -9,9 +9,7 @@ export const getVagasbyId: FastifyPluginAsyncZod = async (server) => {
   server.get(
     '/vagas/:id',
     {
-      preHandler: [
-        checkAutentication
-      ],
+      preHandler: [checkAutentication],
       schema: {
         tags: ['Vagas'],
         summary: 'Endpoint para ler uma vaga pelo id',

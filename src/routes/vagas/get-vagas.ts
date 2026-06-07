@@ -9,9 +9,7 @@ export const getVagas: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/vagas',
     {
-      preHandler: [
-        checkAutentication
-      ],
+      preHandler: [checkAutentication],
       schema: {
         tags: ['Vagas'],
         summary: 'Essa rota lista todas as vagas',
@@ -61,9 +59,7 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/vagas/filtros',
     {
-      preHandler: [
-        checkAutentication
-      ],
+      preHandler: [checkAutentication],
       schema: {
         tags: ['Vagas'],
         summary: 'Essa rota filtra as vagas por categoria.',
@@ -115,9 +111,7 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/search',
     {
-      preHandler: [
-        checkAutentication
-      ],
+      preHandler: [checkAutentication],
       schema: {
         tags: ['Vagas'],
         summary: 'Endpoint para  pesquisa de Vagas',
