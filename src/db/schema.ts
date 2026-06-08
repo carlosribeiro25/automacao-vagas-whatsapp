@@ -9,6 +9,7 @@ import {
   index,
   pgEnum,
   customType,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 
@@ -20,6 +21,11 @@ export const modalityEnum = pgEnum('modality', [
 ])
 
 export const roleEnum = pgEnum('user_role', ['manager', 'user'])
+
+export const whatsappConnectionStatusEnum = pgEnum(
+  'whatsapp_connection_status',
+  ['pending', 'qr_ready', 'authenticated', 'ready', 'disconnected', 'failed'],
+)
 
 export const users = pgTable(
   'users',
@@ -43,6 +49,9 @@ export const vagas = pgTable(
   'vagas',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    connectionId: integer('connection_id').references(
+      () => whatsapp_connections.id,
+    ),
     title: text('title'),
     message: text('message'),
     mensagemId: integer('mensagem_id').references(() => mensagens.id),
@@ -70,6 +79,7 @@ export const vagas = pgTable(
     })('search_vector'),
   },
   (table) => [
+    index('vagas_connection_idx').on(table.connectionId),
     index('vagas_category_idx').on(table.category),
     index('vagas_location_idx').on(table.location),
   ],
@@ -93,6 +103,9 @@ export const mensagens = pgTable(
   'mensagens',
   {
     id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    connectionId: integer('connection_id').references(
+      () => whatsapp_connections.id,
+    ),
     grupoId: integer('grupo_id').references(() => grupos_whatsapp.id),
     autor: text('autor'),
     conteudo: text('conteudo'),
@@ -104,6 +117,7 @@ export const mensagens = pgTable(
     created_at: timestamp('created_at').defaultNow(),
   },
   (table) => [
+    index('mensagens_connection_idx').on(table.connectionId),
     index('mensagens_processed_idx').on(table.processed),
     index('mensagens_is_job_idx').on(table.is_job),
   ],
@@ -118,3 +132,46 @@ export const passwordResetTokens = pgTable('passwordResetTokens', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   useAt: timestamp('used_at', { withTimezone: true }),
 })
+
+export const whatsapp_connections = pgTable('whatsapp_connections', {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  status: whatsappConnectionStatusEnum('status').notNull().default('pending'),
+  phone: text('phone'),
+  clientKey: text('client_key').notNull().unique(),
+  sessionKey: text('session_key'),
+  lastQr: text('last_qr'),
+  lastQrAt: timestamp('last_qr_at', { withTimezone: true }),
+  connectedAt: timestamp('connected_at', { withTimezone: true }),
+  disconnectedAt: timestamp('disconnected_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updateAt: timestamp('update_at', { withTimezone: true }).defaultNow(),
+}, (table) => [
+  index('whatsapp_connections_user_idx').on(table.userId),
+  index('whatsapp_connections_status_idx').on(table.status),
+])
+
+export const whatsapp_connection_groups = pgTable(
+  'whatsapp_connection_groups',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    connectionId: integer('connection_id')
+      .references(() => whatsapp_connections.id)
+      .notNull(),
+    groupId: integer('group_id')
+      .references(() => grupos_whatsapp.id)
+      .notNull(),
+    selected: boolean('selected').default(false),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updateAt: timestamp('update_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('whatsapp_connection_groups_connection_idx').on(table.connectionId),
+    index('whatsapp_connection_groups_selected_idx').on(table.selected),
+    uniqueIndex('whatsapp_connection_groups_connection_group_unique').on(
+      table.connectionId,
+      table.groupId,
+    ),
+  ],
+)
