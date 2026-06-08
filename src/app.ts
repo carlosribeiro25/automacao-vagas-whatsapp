@@ -22,6 +22,10 @@ import { visionRoutes } from './modules/vision/vision.routes.js'
 import { registerUser } from './routes/Users/create-user.js'
 import { updateUser } from './routes/Users/update-user.js'
 import { authRouter } from './routes/login.js'
+import {
+  forgotPassword,
+  resetPassword,
+} from './routes/Users/forgot-password.js'
 
 const server = fastify({
   logger: true,
@@ -67,5 +71,7 @@ server.register(visionRoutes)
 server.register(registerUser)
 server.register(updateUser)
 server.register(authRouter)
+server.register(resetPassword)
+server.register(forgotPassword)
 
 export { server }
