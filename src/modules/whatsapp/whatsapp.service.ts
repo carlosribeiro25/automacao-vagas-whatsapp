@@ -1,7 +1,12 @@
 import fs from 'fs'
 import path from 'path'
 import { db } from '@/db/index.js'
-import { grupos_whatsapp, mensagens, vagas } from '@/db/schema.js'
+import {
+  grupos_whatsapp,
+  mensagens,
+  vagas,
+  whatsapp_connection_groups,
+} from '@/db/schema.js'
 import { eq } from 'drizzle-orm'
 import {
   extractJobDataFromImage,
@@ -28,6 +33,7 @@ export function normalizeModality(value: string | null): ModalityEnum | null {
 
 export async function processarMensagemWhatsapp(dados: unknown) {
   const dataSchema = z.object({
+    connectionId: z.number().int().positive(),
     grupoWappId: z.string(),
     grupoNome: z.string(),
     autor: z.string(),
@@ -63,6 +69,14 @@ export async function processarMensagemWhatsapp(dados: unknown) {
         .then((r) => r[0]))
   }
 
+  await db
+    .insert(whatsapp_connection_groups)
+    .values({
+      connectionId: data.connectionId,
+      groupId: grupo.id,
+    })
+    .onConflictDoNothing()
+
   let imagemUrl: string | null = null
   let cloudinaryUrl: string | null = null
 
@@ -78,6 +92,7 @@ export async function processarMensagemWhatsapp(dados: unknown) {
   const [mensagem] = await db
     .insert(mensagens)
     .values({
+      connectionId: data.connectionId,
       grupoId: grupo.id,
       autor: data.autor,
       conteudo: data.conteudo,
@@ -106,6 +121,7 @@ export async function processarMensagemWhatsapp(dados: unknown) {
   if (!result?.is_job) return
 
   await db.insert(vagas).values({
+    connectionId: data.connectionId,
     mensagemId: mensagem.id,
     title: result.title,
     message: result.messagem,
