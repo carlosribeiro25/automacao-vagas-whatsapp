@@ -5,6 +5,8 @@ import { db } from '@/db/index.js'
 import { eq } from 'drizzle-orm'
 import { verify } from 'argon2'
 import jwt from 'jsonwebtoken'
+import { randomUUID } from 'node:crypto'
+import { redisConnection } from '@/lib/redis.js'
 
 export const authRouter: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -53,7 +55,25 @@ export const authRouter: FastifyPluginAsyncZod = async (app) => {
       const token = jwt.sign(
         { sub: user.id, role: user.role },
         process.env.JWT_SECRET,
+        {
+          expiresIn: '30m'
+        }
       )
+
+      const refreshToken = randomUUID()
+      const TTL_7_DAYS = 60 * 60 * 24 * 7
+
+      await redisConnection.set(`refresh:${refreshToken}`, user.id, 'EX', TTL_7_DAYS)
+
+      const isProd = process.env.NODE_ENV === 'production'
+
+      reply.setCookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: TTL_7_DAYS,
+      })
 
       return reply.status(200).send({ token })
     },
