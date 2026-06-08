@@ -56,14 +56,19 @@ export const authRouter: FastifyPluginAsyncZod = async (app) => {
         { sub: user.id, role: user.role },
         process.env.JWT_SECRET,
         {
-          expiresIn: '30m'
-        }
+          expiresIn: '30m',
+        },
       )
 
       const refreshToken = randomUUID()
       const TTL_7_DAYS = 60 * 60 * 24 * 7
 
-      await redisConnection.set(`refresh:${refreshToken}`, user.id, 'EX', TTL_7_DAYS)
+      await redisConnection.set(
+        `refresh:${refreshToken}`,
+        user.id,
+        'EX',
+        TTL_7_DAYS,
+      )
 
       const isProd = process.env.NODE_ENV === 'production'
 

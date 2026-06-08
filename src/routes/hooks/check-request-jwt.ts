@@ -10,7 +10,6 @@ export async function checkAutentication(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  
   const cookieToken = request.cookies?.accessToken
   const authHeader = request.headers.authorization
   const headerToken = authHeader?.startsWith('Bearer ')
