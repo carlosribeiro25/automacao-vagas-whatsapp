@@ -1,6 +1,17 @@
 import { Queue } from 'bullmq'
 
-export const mensagemQueue = new Queue('mensagem-whatsaap', {
+export type WhatsappMessageJobData = {
+  connectionId: number
+  grupoWappId: string
+  grupoNome: string
+  autor: string
+  conteudo: string
+  imagemBuffer: string | null
+  imagemNome: string | null
+  dataMensagem: Date
+}
+
+export const mensagemQueue = new Queue<WhatsappMessageJobData>('mensagem-whatsaap', {
   connection: { url: process.env.REDIS_URL! },
   skipVersionCheck: true,
   defaultJobOptions: {
