@@ -1,8 +1,10 @@
 import fs from 'fs'
 import path from 'path'
-import qrcode from 'qrcode-terminal'
 import pkg from 'whatsapp-web.js'
+
 const { Client, LocalAuth } = pkg
+
+export type WhatsappClient = InstanceType<typeof Client>
 
 function removeLockfileWithRetry(
   lockfilePath: string,
@@ -28,82 +30,20 @@ function removeLockfileWithRetry(
   }
 }
 
-export const whatsappClient = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  },
-})
+export function getWhatsappLockfilePath(clientKey: string) {
+  return path.resolve('.wwebjs_auth', `session-${clientKey}`, 'lockfile')
+}
 
-whatsappClient.on('qr', (qr) => {
-  console.log('[WhatsApp] Escaneie o QR Code abaixo:')
-  qrcode.generate(qr, { small: true })
-})
+export function cleanupWhatsappClientAuth(clientKey: string) {
+  removeLockfileWithRetry(getWhatsappLockfilePath(clientKey))
+}
 
-whatsappClient.on('loading_screen', (percent, message) => {
-  console.log(`[WhatsApp] Carregando... ${percent}% - ${message}`)
-})
-
-whatsappClient.on('authenticated', () => {
-  console.log('[WhatsApp] Sessão autenticada.')
-})
-
-whatsappClient.on('ready', () => {
-  console.log('[WhatsApp] Cliente conectado e pronto!')
-
-  whatsappClient
-    .getChats()
-    .then((chats) => {
-      console.log(
-        `[WhatsApp] ${chats.length} chats carregados — listeners ativos.`,
-      )
-    })
-    .catch((err) => {
-      console.error(
-        '[WhatsApp] getChats() falhou — página Puppeteer não está pronta:',
-        err.message,
-      )
-      console.warn('[WhatsApp] Reiniciando cliente para corrigir...')
-      whatsappClient.destroy().then(() => {
-        setTimeout(() => whatsappClient.initialize(), 3000)
-      })
-    })
-})
-
-let readyFired = false
-whatsappClient.once('ready', () => {
-  readyFired = true
-})
-whatsappClient.once('authenticated', () => {
-  const check = async (attempt: number) => {
-    if (readyFired) return
-    const state = await whatsappClient.getState().catch(() => null)
-    if (state === 'CONNECTED') {
-      console.log('[WhatsApp] Cliente CONNECTED — emitindo ready manualmente.')
-      whatsappClient.emit('ready')
-      return
-    }
-    if (attempt < 12) {
-      setTimeout(() => check(attempt + 1), 5_000)
-    } else {
-      console.error(
-        '[WhatsApp] Não foi possível confirmar ready após 60s. Reiniciando...',
-      )
-      whatsappClient.destroy().then(() => {
-        setTimeout(() => whatsappClient.initialize(), 3000)
-      })
-    }
-  }
-  setTimeout(() => check(0), 15_000)
-})
-
-whatsappClient.on('auth_failure', (msg) => {
-  console.error('[WhatsApp] Falha na autenticação:', msg)
-})
-
-whatsappClient.on('disconnected', (reason) => {
-  console.warn('[WhatsApp] Desconectado:', reason)
-  const lockfile = path.resolve('.wwebjs_auth', 'session', 'lockfile')
-  removeLockfileWithRetry(lockfile)
-})
+export function createWhatsappClient(clientKey: string): WhatsappClient {
+  return new Client({
+    authStrategy: new LocalAuth({ clientId: clientKey }),
+    puppeteer: {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    },
+  }) as WhatsappClient
+}
