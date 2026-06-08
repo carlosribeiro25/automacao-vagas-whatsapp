@@ -108,3 +108,13 @@ export const mensagens = pgTable(
     index('mensagens_is_job_idx').on(table.is_job),
   ],
 )
+
+export const passwordResetTokens = pgTable('passwordResetTokens', {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer('user_id')
+    .references(() => users.id)
+    .notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  useAt: timestamp('used_at', { withTimezone: true }),
+})
