@@ -29,12 +29,10 @@ export const authRouter: FastifyPluginAsyncZod = async (app) => {
       const result = await db.select().from(users).where(eq(users.email, email))
 
       if (result.length === 0) {
-        return reply
-          .status(400)
-          .send({
-            error:
-              'Credencias inválidas, verifique se o email ou senha estao corretos.',
-          })
+        return reply.status(400).send({
+          error:
+            'Credencias inválidas, verifique se o email ou senha estao corretos.',
+        })
       }
 
       const user = result[0]
@@ -42,12 +40,10 @@ export const authRouter: FastifyPluginAsyncZod = async (app) => {
       const verifyPassword = await verify(user.password, password)
 
       if (!verifyPassword) {
-        return reply
-          .status(400)
-          .send({
-            error:
-              'Credencias inválidas, verifique se o email ou senha estao corretos.',
-          })
+        return reply.status(400).send({
+          error:
+            'Credencias inválidas, verifique se o email ou senha estao corretos.',
+        })
       }
 
       if (!process.env.JWT_SECRET) {

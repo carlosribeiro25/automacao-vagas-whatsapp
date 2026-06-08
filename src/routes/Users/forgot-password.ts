@@ -2,7 +2,7 @@ import { db } from '@/db/index.js'
 import { users, passwordResetTokens } from '@/db/schema.js'
 import { eq, and, isNull, gt } from 'drizzle-orm'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
-import { randomBytes} from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import z from 'zod'
 import { sendResetEmail } from '@/services/email.service.js'
 import { hash } from 'argon2'
@@ -39,7 +39,7 @@ export const forgotPassword: FastifyPluginAsyncZod = async (server) => {
       await db.insert(passwordResetTokens).values({
         userId: user[0].id,
         token,
-        expiresAt
+        expiresAt,
       })
 
       await sendResetEmail(email, token)

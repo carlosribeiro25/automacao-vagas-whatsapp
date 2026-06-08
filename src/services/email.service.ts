@@ -10,6 +10,6 @@ export async function sendResetEmail(email: string, token: string) {
     to: email,
     subject: 'Recuperação de senha',
     html: `<p>Clique no link para recuperar sua senha.Token válido por 15 minutos.</p>
-        <a href="${link}"> ${link} </a>`
+        <a href="${link}"> ${link} </a>`,
   })
 }

@@ -13,7 +13,7 @@ export const registerUser: FastifyPluginAsyncZod = async (server) => {
           name: z.string(),
           email: z.email(),
           phone: z.string(),
-          password: z.string(),
+          password: z.string().min(6),
           role: z.enum(['manager', 'user']).default('user').optional(),
         }),
 
