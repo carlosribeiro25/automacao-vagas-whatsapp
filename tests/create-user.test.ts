@@ -40,7 +40,7 @@ test('Campos obrigatorios ausentes', async () => {
 
   expect((await response).status).toEqual(400)
   expect((await response).body).toEqual({
-    error: 'Dados inválidos ou malformados',
+    error: 'Bad Request',
   })
 })
 
