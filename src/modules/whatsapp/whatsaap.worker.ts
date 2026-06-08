@@ -1,8 +1,14 @@
-import { whatsappClient } from './whatsapp.client.js'
 import type pkg from 'whatsapp-web.js'
 import { mensagemQueue } from './whatsapp.queue.js'
 
-export function startWhatsappWorker() {
+type WhatsappClientLike = {
+  on(event: 'message' | 'message_create', listener: (msg: pkg.Message) => void): void
+}
+
+export function bindWhatsappMessageHandlers(
+  client: WhatsappClientLike,
+  connectionId: number,
+) {
   const handler = async (msg: pkg.Message) => {
     console.log('[Worker] Mensagem recebida de:', msg.from, '→', msg.to)
     try {
@@ -30,6 +36,7 @@ export function startWhatsappWorker() {
         }
       }
       await mensagemQueue.add('processar', {
+        connectionId,
         grupoWappId: origem,
         grupoNome,
         autor: msg.author ?? msg.from,
@@ -47,9 +54,6 @@ export function startWhatsappWorker() {
     }
   }
 
-  whatsappClient.on('message', handler)
-  whatsappClient.on('message_create', handler)
-
-  whatsappClient.initialize()
-  console.log('[Worker] WhatsApp worker iniciado.')
+  client.on('message', handler)
+  client.on('message_create', handler)
 }
