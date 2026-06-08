@@ -71,6 +71,13 @@
       "when": 1780848874440,
       "tag": "0009_daffy_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780944583135,
+      "tag": "0010_bouncy_daredevil",
+      "breakpoints": true
     }
   ]
 }
