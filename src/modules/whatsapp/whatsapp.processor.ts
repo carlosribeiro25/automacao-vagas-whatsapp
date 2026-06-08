@@ -1,13 +1,14 @@
 import { Worker } from 'bullmq'
 import { processarMensagemWhatsapp } from './whatsapp.service.js'
+import type { WhatsappMessageJobData } from './whatsapp.queue.js'
 
 export function startProcessor() {
   console.log('[Processor] BullMQ worker iniciado, aguardando jobs...')
-  new Worker(
+  new Worker<WhatsappMessageJobData>(
     'mensagem-whatsaap',
     async (job) => {
       console.log(
-        `[Processor] Processando job #${job.id} de ${job.data.grupoNome} (${job.data.grupoWappId})`,
+        `[Processor] Processando job #${job.id} da conexão ${job.data.connectionId} em ${job.data.grupoNome} (${job.data.grupoWappId})`,
       )
       const dados = {
         ...job.data,
