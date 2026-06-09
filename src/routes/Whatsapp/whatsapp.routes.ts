@@ -217,6 +217,12 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         })
       }
 
+      if (connection.status !== 'ready') {
+        return reply.status(409).send({
+          error: `Conexão WhatsApp ainda não está pronta (status: ${connection.status}). Aguarde o QR ser escaneado.`,
+        })
+      }
+
       const chats = await client.getChats()
       const syncedGroups: Array<{
         id: number
