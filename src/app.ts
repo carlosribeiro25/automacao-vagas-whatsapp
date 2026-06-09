@@ -29,6 +29,7 @@ import {
   resetPassword,
 } from './routes/Users/forgot-password.js'
 import { routeLogout } from './routes/logout.js'
+import { whatsappRoutes } from './routes/Whatsapp/whatsapp.routes.js'
 
 const server = fastify({
   logger: true,
@@ -81,5 +82,6 @@ server.register(refreshToken)
 server.register(resetPassword)
 server.register(forgotPassword)
 server.register(routeLogout)
+server.register(whatsappRoutes)
 
 export { server }
