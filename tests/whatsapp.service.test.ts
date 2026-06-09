@@ -48,7 +48,11 @@ import {
   extractJobDataFromText,
 } from '../src/modules/vision/vision.service.js'
 import { uploadImagemCloudinary } from '../src/services/cloudinary/cloudinary.service.js'
-import { processarMensagemWhatsapp } from '../src/modules/whatsapp/whatsapp.service.js'
+import fs from 'fs'
+import {
+  normalizeModality,
+  processarMensagemWhatsapp,
+} from '../src/modules/whatsapp/whatsapp.service.js'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -82,6 +86,7 @@ const naoEVaga = { ...vagaExtraida, is_job: false }
 
 // Dados de entrada válidos para todos os testes
 const dadosTexto = {
+  connectionId: 10,
   grupoWappId: 'grupo-001',
   grupoNome: 'Grupo Vagas TI',
   autor: '5511999999999',
@@ -137,6 +142,10 @@ function setupDbMocks({
     .fn()
     .mockReturnValue({ returning: insertMensagemReturning })
 
+  const insertConnectionGroupValues = vi
+    .fn()
+    .mockReturnValue({ onConflictDoNothing: vi.fn().mockResolvedValue([]) })
+
   const insertVagasValues = vi.fn().mockResolvedValue([])
 
   // insert é chamado na ordem: grupos_whatsapp (se grupo não existe), mensagens, vagas
@@ -147,6 +156,10 @@ function setupDbMocks({
     if (table?.whatsaapId !== undefined) {
       // tabela grupos_whatsapp
       return { values: insertGrupoValues } as any
+    }
+    if (table?.selected !== undefined) {
+      // tabela whatsapp_connection_groups
+      return { values: insertConnectionGroupValues } as any
     }
     if (table?.conteudo !== undefined) {
       // tabela mensagens
@@ -161,7 +174,13 @@ function setupDbMocks({
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere })
   mocked.update.mockReturnValue({ set: updateSet } as any)
 
-  return { insertVagasValues, insertMensagemValues, updateSet }
+  return {
+    insertConnectionGroupValues,
+    insertGrupoValues,
+    insertMensagemValues,
+    insertVagasValues,
+    updateSet,
+  }
 }
 
 // ─── Limpar mocks entre testes ───────────────────────────────────────────────
@@ -192,7 +211,10 @@ test('input inválido (sem grupoWappId) → lança ZodError', async () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 test('grupo inexistente → cria automaticamente na tabela grupos_whatsapp', async () => {
-  setupDbMocks({ grupoExiste: false, grupoInserido: grupoExistente })
+  const { insertGrupoValues } = setupDbMocks({
+    grupoExiste: false,
+    grupoInserido: grupoExistente,
+  })
 
   vi.mocked(extractJobDataFromText).mockResolvedValueOnce(naoEVaga)
 
@@ -200,6 +222,23 @@ test('grupo inexistente → cria automaticamente na tabela grupos_whatsapp', asy
 
   // insert deve ter sido chamado pelo menos para grupos_whatsapp e mensagens
   expect(db.insert).toHaveBeenCalled()
+  expect(insertGrupoValues).toHaveBeenCalledWith({
+    name: dadosTexto.grupoNome,
+    whatsaapId: dadosTexto.grupoWappId,
+  })
+})
+
+test('sempre cria vínculo da conexão com o grupo encontrado', async () => {
+  const { insertConnectionGroupValues } = setupDbMocks()
+
+  vi.mocked(extractJobDataFromText).mockResolvedValueOnce(naoEVaga)
+
+  await processarMensagemWhatsapp(dadosTexto)
+
+  expect(insertConnectionGroupValues).toHaveBeenCalledWith({
+    connectionId: dadosTexto.connectionId,
+    groupId: grupoExistente.id,
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -207,7 +246,7 @@ test('grupo inexistente → cria automaticamente na tabela grupos_whatsapp', asy
 // ════════════════════════════════════════════════════════════════════════════
 
 test('mensagem de texto que NÃO é vaga → marca processed:true, NÃO insere em vagas', async () => {
-  const { insertVagasValues, updateSet } = setupDbMocks()
+  const { insertMensagemValues, insertVagasValues, updateSet } = setupDbMocks()
 
   vi.mocked(extractJobDataFromText).mockResolvedValueOnce(naoEVaga)
 
@@ -218,6 +257,17 @@ test('mensagem de texto que NÃO é vaga → marca processed:true, NÃO insere e
 
   // mensagens.processed foi atualizado para true
   expect(updateSet).toHaveBeenCalledWith({ processed: true, is_job: false })
+
+  // Inseriu mensagem com o escopo da conexão
+  expect(insertMensagemValues).toHaveBeenCalledWith({
+    connectionId: dadosTexto.connectionId,
+    grupoId: grupoExistente.id,
+    autor: dadosTexto.autor,
+    conteudo: dadosTexto.conteudo,
+    tipo_mensagem: 'texto',
+    imagem_url: null,
+    data: dadosTexto.dataMensagem,
+  })
 
   // NÃO inseriu na tabela vagas
   expect(insertVagasValues).not.toHaveBeenCalled()
@@ -238,6 +288,8 @@ test('mensagem de texto que É vaga → marca processed:true e insere em vagas',
   // Inseriu na tabela vagas com os dados corretos
   expect(insertVagasValues).toHaveBeenCalledWith(
     expect.objectContaining({
+      connectionId: dadosTexto.connectionId,
+      mensagemId: mensagemInserida.id,
       title: 'Dev Frontend',
       category: 'Tecnologia',
       modality: 'Remoto', // passou por normalizeModality
@@ -249,12 +301,24 @@ test('mensagem de texto que É vaga → marca processed:true e insere em vagas',
   )
 })
 
+test('mensagem de texto com retorno nulo da IA → não atualiza processed nem insere vaga', async () => {
+  const { insertVagasValues, updateSet } = setupDbMocks()
+
+  vi.mocked(extractJobDataFromText).mockResolvedValueOnce(null)
+
+  await processarMensagemWhatsapp(dadosTexto)
+
+  expect(extractJobDataFromText).toHaveBeenCalledWith(dadosTexto.conteudo)
+  expect(updateSet).not.toHaveBeenCalled()
+  expect(insertVagasValues).not.toHaveBeenCalled()
+})
+
 // ════════════════════════════════════════════════════════════════════════════
 // BLOCO 4 — Mensagem com IMAGEM
 // ════════════════════════════════════════════════════════════════════════════
 
 test('mensagem com imagem → faz upload no Cloudinary e chama extractJobDataFromImage', async () => {
-  const { insertVagasValues } = setupDbMocks()
+  const { insertMensagemValues, insertVagasValues } = setupDbMocks()
 
   vi.mocked(uploadImagemCloudinary).mockResolvedValueOnce(
     'https://fake-cdn.com/img.png',
@@ -275,6 +339,15 @@ test('mensagem com imagem → faz upload no Cloudinary e chama extractJobDataFro
   // Vision foi chamado com o caminho local (não cloudinary — o service lê do disco)
   expect(extractJobDataFromImage).toHaveBeenCalledOnce()
   expect(extractJobDataFromText).not.toHaveBeenCalled()
+  expect(insertMensagemValues).toHaveBeenCalledWith(
+    expect.objectContaining({
+      connectionId: dadosImagem.connectionId,
+      tipo_mensagem: 'imagem',
+      imagem_url: expect.stringContaining('vaga.png'),
+    }),
+  )
+  expect(fs.writeFileSync).toHaveBeenCalledOnce()
+  expect(fs.unlinkSync).toHaveBeenCalledOnce()
 
   // Como é vaga, inseriu em vagas com a URL do cloudinary
   expect(insertVagasValues).toHaveBeenCalledWith(
@@ -303,4 +376,15 @@ test('mensagem com imagem que NÃO é vaga → NÃO insere em vagas', async () =
 
   expect(uploadImagemCloudinary).toHaveBeenCalledOnce()
   expect(insertVagasValues).not.toHaveBeenCalled()
+})
+
+test('normalizeModality converte variações para o enum esperado', () => {
+  expect(normalizeModality('100% remoto')).toBe('Remoto')
+  expect(normalizeModality('modelo híbrido')).toBe('Hibrido')
+  expect(normalizeModality('hybrid role')).toBe('Hibrido')
+  expect(normalizeModality('home office 2x na semana')).toBe('Home Office')
+  expect(normalizeModality('Presencial em Fortaleza')).toBe('Presencial')
+  expect(normalizeModality('')).toBeNull()
+  expect(normalizeModality(null)).toBeNull()
+  expect(normalizeModality('freelancer')).toBeNull()
 })

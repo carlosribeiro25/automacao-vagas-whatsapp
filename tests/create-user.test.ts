@@ -13,7 +13,7 @@ test('Usuario criado com sucesso', async () => {
       name: faker.person.fullName(),
       email: faker.internet.email(),
       phone: faker.phone.number(),
-      password: faker.string.uuid(),
+      password: faker.internet.password(),
       role: 'user',
     })
 
@@ -54,7 +54,7 @@ test('Nome com menos de 4 caracteres → 400', async () => {
       name: 'Ana',
       email: faker.internet.email(),
       phone: faker.phone.number(),
-      password: faker.string.uuid(),
+      password: faker.internet.password(),
       role: 'user',
     })
 
@@ -72,9 +72,9 @@ test('Conflitos de email existente', async () => {
     .set('Content-Type', 'application/json')
     .send({
       name: faker.person.fullName(),
-      email: 'Jose10@hotmail.com',
+      email: 'wc8025470@gmail.com',
       phone: faker.phone.number(),
-      password: faker.string.uuid(),
+      password: faker.internet.password(),
     })
 
   expect((await response).status).toEqual(409)
