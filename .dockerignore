@@ -10,3 +10,7 @@ tests/
 factore/
 coverage/
 TODO.md
+biome.json
+README.md
+.gitignore
+.git
