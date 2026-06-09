@@ -1,23 +1,33 @@
 # Sistema de Filtros de Vagas do WhatsApp
 
-API REST para captura, análise com IA e filtragem automática de vagas de emprego enviadas em grupos do WhatsApp.
+API REST para capturar mensagens de grupos do WhatsApp, identificar vagas com IA, persistir os dados em PostgreSQL e expor tudo por endpoints Fastify. O projeto suporta autenticação com refresh token em cookie e múltiplas conexões de WhatsApp por usuário.
 
 ---
 
-## Visão Geral da Arquitetura
+## Visão geral
 
 ```mermaid
 graph TD
-    WA[WhatsApp Groups] -->|mensagens/imagens| WC[WhatsApp Client\nwhatsapp-web.js]
-    WC -->|enfileira mensagem| BQ[BullMQ Queue\nRedis]
-    BQ -->|processa| WP[WhatsApp Processor]
-    WP -->|imagem| AI[OpenAI Vision\nGPT-4o]
-    WP -->|texto| AI
-    AI -->|dados extraídos| DB[(PostgreSQL\nNeon)]
-    DB -->|consultas| API[Fastify API]
-    API -->|REST JSON| FE[Frontend / Clients]
-    CD[Cloudinary] -->|upload imagem| DB
+    WA[WhatsApp Web] -->|QR / eventos| SSE[SSE de conexão]
+    WA -->|mensagens| W[Worker WhatsApp]
+    W --> Q[BullMQ / Redis]
+    Q --> P[Processor]
+    P --> AI[OpenAI Vision / texto]
+    AI --> DB[(PostgreSQL / Drizzle)]
+    API[Fastify API] --> DB
+    API --> FE[Frontend]
+    P --> CDN[Cloudinary]
 ```
+
+### Implementações adicionadas recentemente
+
+- Autenticação com access token JWT de `30m` e refresh token rotativo de `7d`.
+- Refresh token armazenado em cookie `httpOnly`.
+- Endpoint de `refresh` e endpoint de `logout` com invalidação em Redis.
+- Recuperação de senha por token com envio de e-mail.
+- Suporte a múltiplas conexões de WhatsApp por usuário.
+- SSE para acompanhar QR Code e status de conexão em tempo real.
+- Vínculo entre conexões, grupos sincronizados, mensagens processadas e vagas geradas.
 
 ---
 
@@ -29,405 +39,319 @@ graph TD
 | Framework | Fastify 5 |
 | Validação | Zod + fastify-type-provider-zod |
 | ORM | Drizzle ORM |
-| Banco de dados | PostgreSQL (Neon Serverless) |
-| Autenticação | JWT (jsonwebtoken) |
+| Banco de dados | PostgreSQL |
+| Cache / fila | Redis + BullMQ |
+| Autenticação | JWT + cookies + Redis |
 | Hash de senha | Argon2 |
-| Fila | BullMQ + Redis (ioredis) |
-| IA / Visão | OpenAI (GPT-4o Vision) |
-| Upload de imagens | Cloudinary |
 | WhatsApp | whatsapp-web.js |
+| IA | OpenAI |
+| Upload de imagens | Cloudinary |
+| E-mail | Resend |
 | Testes | Vitest + Supertest |
-| Linter/Formatter | Biome |
+| Formatação | Biome |
 
 ---
 
-## Fluxo de Processamento de Mensagens
+## Fluxo de autenticação
 
 ```mermaid
 sequenceDiagram
-    participant G as Grupo WhatsApp
-    participant C as WhatsApp Client
-    participant Q as BullMQ Queue
-    participant P as Processor
-    participant AI as OpenAI Vision
-    participant DB as PostgreSQL
+    participant FE as Frontend
+    participant API as Fastify
+    participant R as Redis
 
-    G->>C: Nova mensagem (texto ou imagem)
-    C->>DB: Salva mensagem em `mensagens`
-    C->>Q: Enfileira job de processamento
-    Q->>P: Dequeues job
-    alt Mensagem com imagem
-        P->>AI: Envia imagem para análise
-        AI-->>P: Retorna dados da vaga extraídos
-    else Mensagem de texto
-        P->>AI: Envia texto para análise
-        AI-->>P: Retorna dados da vaga extraídos
-    end
-    P->>DB: Salva vaga em `vagas` (is_job = true)
-    P->>DB: Atualiza mensagem (processed = true)
+    FE->>API: POST /login
+    API->>R: salva refresh token (7d)
+    API-->>FE: token JWT + cookie refreshToken
+    FE->>API: chamadas protegidas com Bearer token
+    FE->>API: POST /refresh com cookie
+    API->>R: valida e rotaciona refresh token
+    API-->>FE: novo accessToken + novo cookie
+    FE->>API: POST /logout
+    API->>R: remove refresh token
+    API-->>FE: limpa cookie
 ```
+
+### Regras atuais
+
+- `POST /login` retorna `{ "token": "..." }`.
+- O refresh token não volta no JSON; ele é gravado no cookie `refreshToken`.
+- `POST /refresh` retorna `{ "accessToken": "..." }` e rotaciona o cookie.
+- `POST /logout` remove o token no Redis e limpa o cookie.
+- As rotas protegidas aceitam `Authorization: Bearer <token>`.
+- O servidor está com CORS habilitado para `FRONTEND_URL` e `credentials: true`.
 
 ---
 
-## Banco de Dados
+## Fluxo WhatsApp multiusuário
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend
+    participant API as Fastify
+    participant WM as Connection Manager
+    participant WA as WhatsApp Client
+    participant Q as BullMQ
+    participant DB as PostgreSQL
+
+    FE->>API: POST /whatsapp/connections
+    API->>DB: cria conexão pendente
+    FE->>API: POST /whatsapp/connections/:id/start
+    API->>WM: inicia runtime da conexão
+    WA-->>WM: evento qr
+    WM->>DB: atualiza status e lastQr
+    WM-->>FE: SSE /events com QR
+    WA-->>WM: evento ready
+    WM->>DB: status ready
+    FE->>API: GET /whatsapp/connections/:id/groups
+    API->>WA: lista chats elegíveis
+    API->>DB: sincroniza grupos da conexão
+    WA->>Q: novas mensagens de grupos selecionados
+    Q->>DB: mensagens e vagas processadas
+```
+
+### Como funciona hoje
+
+- Cada usuário pode criar várias conexões WhatsApp.
+- Cada conexão possui um `clientKey` único para isolar a sessão do `LocalAuth`.
+- O QR Code e os eventos de status são entregues via Server-Sent Events.
+- Os grupos são sincronizados por conexão e podem ser marcados como selecionados.
+- Mensagens de grupos selecionados são enfileiradas, processadas pela IA e podem gerar registros em `vagas`.
+
+---
+
+## Banco de dados
+
+As tabelas centrais do fluxo atual são:
+
+- `users`
+- `passwordResetTokens`
+- `whatsapp_connections`
+- `whatsapp_connection_groups`
+- `grupos_whatsapp`
+- `mensagens`
+- `vagas`
 
 ```mermaid
 erDiagram
-    users {
-        int id PK
-        text name
-        text email
-        text phone
-        text picture
-        text password
-        timestamp creatAt
-        timestamp updateAt
-        user_role role
-    }
-
-    grupos_whatsapp {
-        int id PK
-        text name
-        text whatsaapId
-        text description
-        boolean active
-        timestamp creatAt
-        timestamp updateAt
-    }
-
-    mensagens {
-        int id PK
-        int grupoId FK
-        text autor
-        text conteudo
-        text tipo_mensagem
-        text imagem_url
-        boolean processed
-        boolean is_job
-        timestamp data
-        timestamp created_at
-    }
-
-    vagas {
-        int id PK
-        text title
-        text message
-        int mensagemId FK
-        text tipo_vaga
-        text description
-        text category
-        text company
-        text texto_extraido
-        text imagem_original_url
-        text requirements
-        modality modality
-        numeric salary
-        text benefits
-        text group_name
-        text contact
-        text link
-        text location
-        boolean is_job
-        boolean processed_by_ai
-        timestamp publisheAt
-        tsvector search_vector
-    }
-
-    grupos_whatsapp ||--o{ mensagens : "tem"
-    mensagens ||--o| vagas : "origina"
+    users ||--o{ whatsapp_connections : possui
+    users ||--o{ passwordResetTokens : recupera
+    whatsapp_connections ||--o{ whatsapp_connection_groups : vincula
+    grupos_whatsapp ||--o{ whatsapp_connection_groups : sincroniza
+    whatsapp_connections ||--o{ mensagens : origina
+    grupos_whatsapp ||--o{ mensagens : recebe
+    mensagens ||--o| vagas : gera
+    whatsapp_connections ||--o{ vagas : escopo
 ```
+
+### Campos adicionados no fluxo de WhatsApp
+
+- `whatsapp_connections.status`: `pending | qr_ready | authenticated | ready | disconnected | failed`
+- `whatsapp_connections.lastQr`: último QR emitido para a conexão
+- `mensagens.connectionId`: vincula a mensagem à conexão que a recebeu
+- `vagas.connectionId`: vincula a vaga à conexão que a originou
+- `whatsapp_connection_groups.selected`: define quais grupos da conexão estão ativos para captura
 
 ---
 
-## Endpoints da API
+## Endpoints principais
 
-```mermaid
-graph LR
-    subgraph Public["Público (sem auth)"]
-        L[POST /login]
-        R[POST /registerUser]
-        RG[GET /]
-        V[POST /vision/test]
-        CV[POST /register]
-    end
+### Infra / documentação
 
-    subgraph Auth["Autenticado (JWT)"]
-        GV[GET /vagas]
-        GVF[GET /vagas/filtros]
-        GVS[GET /search]
-        GVI[GET /vagas/:id]
-        UU[PATCH /updateUser/:id]
-    end
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/` | Health básico da API |
+| `GET` | `/docs` | Documentação interativa via Scalar |
 
-    subgraph Manager["Manager only (JWT + role)"]
-        DV[DELETE /vagas/:id]
-    end
-```
+### Autenticação e usuários
 
----
-
-## Referência dos Endpoints
-
-### Autenticação
-
-#### `POST /login`
-Autentica um usuário e retorna um JWT.
-
-**Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "string"
-}
-```
-
-**Respostas:**
-| Status | Corpo |
-|---|---|
-| 200 | `{ "token": "jwt_string" }` |
-| 400 | `{ "error": "Credencias inválidas, verifique se o email ou senha estao corretos." }` |
-
----
-
-### Usuários
-
-#### `POST /registerUser`
-Cria um novo usuário.
-
-**Body:**
-```json
-{
-  "name": "string (min 4 chars)",
-  "email": "user@example.com",
-  "phone": "string",
-  "password": "string",
-  "role": "user | manager (opcional, default: user)"
-}
-```
-
-**Respostas:**
-| Status | Corpo |
-|---|---|
-| 201 | `{ "message": "Usuario cadastrado com sucesso", "usersId": 1 }` |
-| 409 | `{ "duplicate": "Email ja esta cadastrado" }` |
-
----
-
-#### `PATCH /updateUser/:id` 🔒
-Atualiza dados do usuário. Requer JWT.
-
-**Params:** `id` (number)
-
-**Body:**
-```json
-{
-  "email": "string (opcional)",
-  "password": "string (opcional)",
-  "phone": "string (opcional)",
-  "picture": "url (opcional)"
-}
-```
-
-**Respostas:**
-| Status | Corpo |
-|---|---|
-| 200 | `{ "message": "Usuario atualizado com sucesso" }` |
-| 404 | `{ "error": "Usuario nao encontrado" }` |
-| 409 | `{ "emailExist": "Email ja esta cadastrado" }` |
-
----
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/registerUser` | Não | Cria um usuário |
+| `POST` | `/login` | Não | Autentica e retorna access token |
+| `POST` | `/refresh` | Cookie | Renova access token e rotaciona refresh token |
+| `POST` | `/logout` | Cookie | Invalida refresh token e limpa cookie |
+| `POST` | `/forgot-password` | Não | Gera token de recuperação e envia e-mail |
+| `POST` | `/reset-password` | Não | Redefine senha com token válido |
+| `PATCH` | `/updateUser/:id` | Sim | Atualiza usuário |
 
 ### Vagas
 
-#### `POST /register`
-Cria uma vaga manualmente.
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/register` | Não | Cadastra vaga manualmente |
+| `GET` | `/vagas` | Sim | Lista vagas com paginação |
+| `GET` | `/vagas/filtros` | Sim | Filtra vagas |
+| `GET` | `/search` | Sim | Busca full-text em vagas |
+| `GET` | `/vagas/:id` | Sim | Busca vaga por ID |
+| `DELETE` | `/vagas/:id` | Sim + manager | Remove vaga |
 
-**Body:**
+### Visão / IA
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/vision/test` | Não | Faz upload de imagem e extrai dados de vaga |
+
+### WhatsApp
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `GET` | `/whatsapp/connections` | Sim | Lista conexões do usuário |
+| `POST` | `/whatsapp/connections` | Sim | Cria uma nova conexão pendente |
+| `POST` | `/whatsapp/connections/:id/start` | Sim | Inicia a sessão WhatsApp e dispara QR |
+| `GET` | `/whatsapp/connections/:id/events` | Sim | Stream SSE com QR e status |
+| `GET` | `/whatsapp/connections/:id/groups` | Sim | Sincroniza grupos e canais elegíveis |
+| `POST` | `/whatsapp/connections/:id/groups/select` | Sim | Marca os grupos selecionados |
+| `POST` | `/whatsapp/connections/:id/disconnect` | Sim | Desconecta a sessão |
+
+---
+
+## Exemplos de payload
+
+### `POST /login`
+
 ```json
 {
-  "is_job": true,
-  "title": "string (opcional)",
-  "description": "string (opcional)",
-  "category": "string (opcional)",
-  "company": "string (opcional)",
-  "modality": "Remoto | Hibrido | Presencial | Home Office (opcional)",
-  "salary": 5000,
-  "location": "string (opcional)",
-  "contact": "string (opcional)",
-  "link": "url (opcional)"
+  "email": "user@example.com",
+  "password": "123456"
 }
 ```
 
-**Respostas:**
-| Status | Corpo |
-|---|---|
-| 201 | `{ "message": "Vaga cadastrada com sucesso", "vagaId": 1 }` |
+Resposta `200`:
 
----
-
-#### `GET /vagas` 🔒
-Lista vagas com paginação. Requer JWT.
-
-**Query params:** `page` (default: 1), `limit` (default: 10)
-
-**Resposta 200:**
 ```json
 {
-  "vagas": [{ "id": 1, "title": "...", "modality": "Remoto", "..." : "..." }],
-  "total": 100,
-  "page": 1,
-  "hasMore": true
+  "token": "jwt_access_token"
 }
 ```
 
----
+### `POST /refresh`
 
-#### `GET /vagas/filtros` 🔒
-Filtra vagas por critérios. Requer JWT.
+Resposta `200`:
 
-**Query params:** `category`, `modality`, `tipo_vaga`, `location`, `publisheAt`
-
----
-
-#### `GET /search` 🔒
-Busca full-text nas vagas. Requer JWT.
-
-**Query params:** `q` (obrigatório), `page`, `limit` (max: 100)
-
-**Resposta 200:**
 ```json
 {
-  "vagas": [{ "id": 1, "title": "...", "..." : "..." }],
-  "total": 5
+  "accessToken": "novo_jwt_access_token"
 }
 ```
 
----
+### `POST /registerUser`
 
-#### `GET /vagas/:id` 🔒
-Retorna uma vaga pelo ID. Requer JWT.
-
----
-
-#### `DELETE /vagas/:id` 🔒👑
-Remove uma vaga. Requer JWT com role `manager`.
-
----
-
-### Vision / IA
-
-#### `POST /vision/test`
-Faz upload de uma imagem e extrai dados de vaga via IA (OpenAI GPT-4o).
-
-**Content-Type:** `multipart/form-data`  
-**Campo:** arquivo de imagem (png, jpg, jpeg, gif, webp — max 10MB)
-
-**Resposta 200 (é uma vaga):**
 ```json
 {
-  "success": true,
-  "data": {
-    "is_job": true,
-    "title": "Desenvolvedor Backend",
-    "company": "Empresa X",
-    "modality": "Remoto",
-    "salary": 8000,
-    "location": "São Paulo"
-  }
+  "name": "Maria Souza",
+  "email": "maria@example.com",
+  "phone": "5511999999999",
+  "password": "123456",
+  "role": "user"
 }
 ```
 
-**Resposta 200 (não é uma vaga):**
+### `POST /whatsapp/connections`
+
+Resposta `201`:
+
 ```json
 {
-  "success": false,
-  "message": "Não é vaga"
+  "id": 1,
+  "status": "pending",
+  "clientKey": "wa-1-uuid"
 }
 ```
 
----
+### `GET /whatsapp/connections/:id/events`
 
-## Autenticação
+Exemplo de eventos SSE:
 
-O JWT deve ser enviado no header de todas as rotas protegidas:
+```text
+event: status
+data: {"status":"pending","qr":null}
 
+event: qr
+data: {"status":"qr_ready","qr":"base64-ou-texto-do-qr"}
+
+event: status
+data: {"status":"ready"}
 ```
-Authorization: Bearer <token>
-```
 
-O payload do token contém:
+### `POST /whatsapp/connections/:id/groups/select`
+
 ```json
 {
-  "sub": 1,
-  "role": "user | manager"
+  "groupIds": [1, 2, 3]
 }
 ```
 
 ---
 
-## Instalação e Execução
+## Execução local
 
 ```bash
-# Instalar dependências
 npm install
-
-# Configurar variáveis de ambiente
-cp .env.example .env
-
-# Gerar e aplicar migrations
-npm run db:generate
 npm run db:migrate
-
-# Popular banco com dados iniciais
 npm run db:seed
-
-# Rodar em desenvolvimento
 npm run dev
-
-# Rodar testes
-npm run test
-
-# Build de produção
-npm run start
 ```
 
----
-
-## Variáveis de Ambiente
-
-```env
-DATABASE_URL=          # URL do PostgreSQL (Neon)
-JWT_SECRET=            # Chave secreta para JWT
-REDIS_URL=             # URL do Redis
-OPENAI_API_KEY=        # Chave da OpenAI
-CLOUDINARY_CLOUD_NAME= # Nome do cloud no Cloudinary
-CLOUDINARY_API_KEY=    # API Key do Cloudinary
-CLOUDINARY_API_SECRET= # API Secret do Cloudinary
-```
-
----
-
-## Scripts disponíveis
+### Scripts disponíveis
 
 | Script | Descrição |
 |---|---|
-| `npm run dev` | Servidor em modo watch (tsx) |
-| `npm run start` | Servidor em produção (dist/) |
-| `npm run test` | Roda todos os testes com coverage |
-| `npm run db:generate` | Gera migrations com Drizzle Kit |
-| `npm run db:migrate` | Aplica migrations no banco |
-| `npm run db:studio` | Abre Drizzle Studio |
-| `npm run db:seed` | Popula o banco com dados iniciais |
-| `npm run format` | Formata código com Biome |
+| `npm run dev` | Sobe o servidor com `tsx watch` |
+| `npm run start` | Executa a versão compilada |
+| `npm run test` | Roda a suíte com coverage |
+| `npm run format` | Formata o projeto com Biome |
+| `npm run db:generate` | Gera migrations com Drizzle |
+| `npm run db:migrate` | Aplica migrations |
+| `npm run db:studio` | Abre o Drizzle Studio |
+| `npm run db:seed` | Popula dados iniciais |
 
 ---
 
-## Documentação Interativa
+## Variáveis de ambiente
 
-Com o servidor rodando, acesse:
-
+```env
+DATABASE_URL=
+JWT_SECRET=
+REDIS_URL=
+FRONTEND_URL=
+OPENAI_API_KEY=
+RESEND_API_KEY=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
 ```
+
+### Observações
+
+- `FRONTEND_URL` é usado no CORS e na montagem do link de recuperação de senha.
+- `REDIS_URL` é obrigatório para refresh token e BullMQ.
+- `OPENAI_API_KEY` e credenciais do Cloudinary são necessárias para o fluxo de IA com imagem.
+
+---
+
+## Documentação interativa
+
+Com a aplicação rodando, acesse:
+
+```text
 http://localhost:3000/docs
 ```
 
-Powered by [Scalar](https://scalar.com/) + OpenAPI.
+---
+
+## Testes
+
+O projeto possui cobertura automatizada para os fluxos principais, incluindo:
+
+- autenticação
+- recuperação de senha
+- rotas de vagas
+- rotas e runtime do módulo WhatsApp
+- processamento de mensagens e persistência de vagas
+
+Para rodar tudo:
+
+```bash
+npm run test
+```
