@@ -1,5 +1,5 @@
-import { users } from '@/db/schema.js';
-import { db } from '@/db/index.js';
+import { users } from '../db/schema.js';
+import { db } from '../db/index.js';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { hash } from 'argon2';
 import jwt from 'jsonwebtoken';

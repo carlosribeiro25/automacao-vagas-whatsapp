@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { uploadImagemCloudinary } from '@/services/cloudinary/cloudinary.service.js';
+import { uploadImagemCloudinary } from '../../services/cloudinary/cloudinary.service.js';
 import { extractJobDataFromImage } from './vision.service.js';
-import { db } from '@/db/index.js';
-import { vagas } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { vagas } from '../../db/schema.js';
 export async function testVisionController(request, reply) {
     const data = await request.file();
     if (!data) {

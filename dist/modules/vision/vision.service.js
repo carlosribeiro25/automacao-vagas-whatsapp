@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { openai } from '@/services/openai.services.js';
+import { openai } from '../../services/openai.services.js';
 import { vagaSchema } from '../vagas/vaga.schema.js';
 const SUPPORTED_MIME_TYPES = {
     png: 'image/png',

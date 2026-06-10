@@ -1,5 +1,5 @@
-import { db } from '@/db/index.js';
-import { vagas } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { vagas } from '../../db/schema.js';
 import z from 'zod';
 export const createVagas = async (server) => {
     server.post('/register', {

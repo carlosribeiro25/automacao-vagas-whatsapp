@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { db } from '@/db/index.js';
-import { grupos_whatsapp, mensagens, vagas, whatsapp_connection_groups, } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { grupos_whatsapp, mensagens, vagas, whatsapp_connection_groups, } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { extractJobDataFromImage, extractJobDataFromText, } from '@/modules/vision/vision.service.js';
-import { uploadImagemCloudinary } from '@/services/cloudinary/cloudinary.service.js';
+import { extractJobDataFromImage, extractJobDataFromText, } from '../../modules/vision/vision.service.js';
+import { uploadImagemCloudinary } from '../../services/cloudinary/cloudinary.service.js';
 import z from 'zod';
 export function normalizeModality(value) {
     if (!value)

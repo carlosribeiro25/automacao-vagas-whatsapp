@@ -1,6 +1,6 @@
 import z from 'zod';
-import { db } from '@/db/index.js';
-import { vagas } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { vagas } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { checkAutentication } from '../hooks/check-request-jwt.js';
 import { checkUserRole } from '../hooks/check-use-role.js';

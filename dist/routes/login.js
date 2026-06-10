@@ -1,11 +1,11 @@
 import z from 'zod';
-import { users } from '@/db/schema.js';
-import { db } from '@/db/index.js';
+import { users } from '../db/schema.js';
+import { db } from '../db/index.js';
 import { eq } from 'drizzle-orm';
 import { verify } from 'argon2';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';
-import { redisConnection } from '@/lib/redis.js';
+import { redisConnection } from '../lib/redis.js';
 export const authRouter = async (app) => {
     app.post('/login', {
         schema: {

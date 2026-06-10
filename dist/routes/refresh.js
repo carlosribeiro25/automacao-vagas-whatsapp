@@ -1,4 +1,4 @@
-import { redisConnection } from '@/lib/redis.js';
+import { redisConnection } from '../lib/redis.js';
 import z from 'zod';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'node:crypto';

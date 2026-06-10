@@ -1,4 +1,4 @@
-import { getAuthUserReq } from '@/utils/getAuthUser.js';
+import { getAuthUserReq } from '../../utils/getAuthUser.js';
 export function checkUserRole(role) {
     return async function (request, reply) {
         const user = getAuthUserReq(request);

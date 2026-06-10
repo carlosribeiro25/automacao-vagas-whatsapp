@@ -4,7 +4,7 @@ import { fastifyCors } from '@fastify/cors';
 import fastifyCookie from '@fastify/cookie';
 import { fastifySwagger } from '@fastify/swagger';
 import ScalarApiReference from '@scalar/fastify-api-reference';
-import { routeDefault } from './routes/route-default.js';
+import { health, routeDefault } from './routes/route-default.js';
 import { getSearch, getVagas, getVagasFilters, } from './routes/vagas/get-vagas.js';
 import { createVagas } from './routes/vagas/create-vagas.js';
 import { deleteVagas } from './routes/vagas/delete-vagas.js';
@@ -42,6 +42,7 @@ server.register(ScalarApiReference, {
     routePrefix: '/docs',
 });
 server.register(routeDefault);
+server.register(health);
 server.register(getVagas);
 server.register(createVagas);
 server.register(deleteVagas);

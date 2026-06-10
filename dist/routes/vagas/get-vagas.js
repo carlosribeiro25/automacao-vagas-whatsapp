@@ -1,5 +1,5 @@
-import { db } from '@/db/index.js';
-import { vagas } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { vagas } from '../../db/schema.js';
 import { and, count, desc, eq, getTableColumns, sql } from 'drizzle-orm';
 import z from 'zod';
 import { checkAutentication } from '../hooks/check-request-jwt.js';

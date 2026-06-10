@@ -1,5 +1,5 @@
-import { db } from '@/db/index.js';
-import { users } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { users } from '../../db/schema.js';
 import { hash } from 'argon2';
 import z from 'zod';
 export const registerUser = async (server) => {

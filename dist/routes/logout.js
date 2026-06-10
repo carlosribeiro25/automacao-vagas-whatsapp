@@ -1,4 +1,4 @@
-import { redisConnection } from '@/lib/redis.js';
+import { redisConnection } from '../lib/redis.js';
 export const routeLogout = async (app) => {
     app.post('/logout', async (request, reply) => {
         const refreshToken = request.cookies.refreshToken;

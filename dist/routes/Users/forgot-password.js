@@ -1,9 +1,9 @@
-import { db } from '@/db/index.js';
-import { users, passwordResetTokens } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { users, passwordResetTokens } from '../../db/schema.js';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import z from 'zod';
-import { sendResetEmail } from '@/services/email.service.js';
+import { sendResetEmail } from '../../services/email.service.js';
 import { hash } from 'argon2';
 export const forgotPassword = async (server) => {
     server.post('/forgot-password', {

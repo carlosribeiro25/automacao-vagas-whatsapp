@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { db } from '@/db/index.js';
-import { grupos_whatsapp, whatsapp_connection_groups, whatsapp_connections, } from '@/db/schema.js';
-import { checkAutentication } from '@/routes/hooks/check-request-jwt.js';
-import { getAuthUserReq } from '@/utils/getAuthUser.js';
+import { db } from '../../db/index.js';
+import { grupos_whatsapp, whatsapp_connection_groups, whatsapp_connections, } from '../../db/schema.js';
+import { checkAutentication } from '../../routes/hooks/check-request-jwt.js';
+import { getAuthUserReq } from '../../utils/getAuthUser.js';
 import { and, eq, inArray } from 'drizzle-orm';
 import z from 'zod';
 import { subscribeWhatsappRuntimeEvents, } from '../../modules/whatsapp/whatsapp.events.js';

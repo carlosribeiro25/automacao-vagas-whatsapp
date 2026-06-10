@@ -1,5 +1,5 @@
-import { db } from '@/db/index.js';
-import { whatsapp_connections } from '@/db/schema.js';
+import { db } from '../../db/index.js';
+import { whatsapp_connections } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { cleanupWhatsappClientAuth, createWhatsappClient, } from './whatsapp.client.js';
 import { emitWhatsappRuntimeEvent } from './whatsapp.events.js';
