@@ -20,7 +20,16 @@ export const authRouter: FastifyPluginAsyncZod = async (app) => {
           password: z.string(),
         }),
         response: {
-          200: z.object({ token: z.string() }),
+          200: z.object({
+            token: z.string(),
+            user: z.object({
+              id: z.number(),
+              name: z.string().nullable(),
+              email: z.email().nullable(),
+              phone: z.string().nullable(),
+              picture: z.string().nullable()
+            })
+          }),
           400: z.object({ error: z.string() }),
         },
       },
@@ -80,7 +89,15 @@ export const authRouter: FastifyPluginAsyncZod = async (app) => {
         maxAge: TTL_7_DAYS,
       })
 
-      return reply.status(200).send({ token })
+      return reply.status(200).send({ token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          picture: user.picture ?? null
+        }
+       })
     },
   )
 }
