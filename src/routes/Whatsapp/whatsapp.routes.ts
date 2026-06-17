@@ -173,7 +173,13 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         writeSseEvent(reply, event)
       })
 
+      // Keepalive a cada 20s para evitar timeout do proxy (Fly.io fecha conexões inativas em ~60s)
+      const keepalive = setInterval(() => {
+        reply.raw.write(': ping\n\n')
+      }, 20_000)
+
       request.raw.on('close', () => {
+        clearInterval(keepalive)
         unsubscribe()
         reply.raw.end()
       })

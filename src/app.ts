@@ -38,10 +38,22 @@ const server = fastify({
 server.setValidatorCompiler(validatorCompiler)
 server.setSerializerCompiler(serializerCompiler)
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+]
+
 server.register(fastifyCors, {
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      cb(null, true)
+    } else {
+      cb(new Error(`CORS: origin ${origin} not allowed`), false)
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
 })
 
 server.register(fastifyCookie)
