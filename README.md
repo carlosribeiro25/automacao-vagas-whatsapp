@@ -52,6 +52,69 @@ graph TD
 
 ---
 
+## Redis da fila
+
+Para evitar estourar a cota do Upstash, a fila BullMQ pode usar um Redis separado via `QUEUE_REDIS_URL`.
+
+### Desenvolvimento local
+
+Suba um Redis local com Docker:
+
+```bash
+docker compose up -d queue-redis
+```
+
+Depois aponte:
+
+```env
+QUEUE_REDIS_URL=redis://localhost:6379
+```
+
+### Produção
+
+Em produção, use um Redis fora do Upstash para a fila, como Redis Cloud, Redis do próprio Fly ou um serviço gerenciado equivalente.
+
+### Qual escolher
+
+- Escolha **Fly Redis** se você quer manter tudo no ecossistema Fly, reduzir latência entre app e fila, e simplificar a operação.
+- Escolha **Redis Cloud** se você quer um serviço gerenciado independente da hospedagem da aplicação, com console mais voltado a banco/Redis puro.
+
+Para este projeto, eu recomendaria **Fly Redis** como primeira opção, porque o app já está em Fly e a fila do BullMQ fica mais próxima do runtime.
+
+### Opção 1: Fly Redis
+
+Passo a passo:
+
+1. Crie um Redis no Fly como um app separado, usando o guia oficial do Fly para Redis/Machine app.
+2. Copie a `REDIS_URL`/`QUEUE_REDIS_URL` gerada pelo Fly.
+3. Configure a aplicação principal com `fly secrets set QUEUE_REDIS_URL=...`.
+4. Mantenha `REDIS_URL` apontando para o Upstash apenas para refresh token, ou migre tudo para o Fly se quiser unificar depois.
+5. Faça deploy da app principal e valide se a fila volta a processar jobs.
+
+Quando vale mais a pena:
+
+- Você quer menos dependência de terceiros.
+- Você quer manter a mesma rede/região do app.
+- Você prefere um setup simples, com menos serviços externos.
+
+### Opção 2: Redis Cloud
+
+Passo a passo:
+
+1. Crie uma conta no Redis Cloud.
+2. Crie uma database nova e escolha a região mais próxima do seu app.
+3. Pegue a string de conexão TLS/Redis fornecida pelo painel.
+4. Defina essa string como `QUEUE_REDIS_URL` no ambiente de produção.
+5. Reinicie a aplicação e valide o worker BullMQ.
+
+Quando vale mais a pena:
+
+- Você quer um Redis totalmente gerenciado e independente da hospedagem.
+- Você quer trocar de infraestrutura no futuro sem mexer na fila.
+- Você prefere um painel dedicado ao Redis.
+
+---
+
 ## Fluxo de autenticação
 
 ```mermaid
@@ -314,6 +377,8 @@ npm run dev
 DATABASE_URL=
 JWT_SECRET=
 REDIS_URL=
+AUTH_REDIS_URL=
+QUEUE_REDIS_URL=
 FRONTEND_URL=
 OPENAI_API_KEY=
 RESEND_API_KEY=
@@ -325,7 +390,9 @@ CLOUDINARY_API_SECRET=
 ### Observações
 
 - `FRONTEND_URL` é usado no CORS e na montagem do link de recuperação de senha.
-- `REDIS_URL` é obrigatório para refresh token e BullMQ.
+- `AUTH_REDIS_URL` é usado pelo auth para refresh token.
+- `REDIS_URL` continua como fallback quando `AUTH_REDIS_URL` não estiver definido.
+- `QUEUE_REDIS_URL` é usado pela fila BullMQ e pode apontar para outro Redis.
 - `OPENAI_API_KEY` e credenciais do Cloudinary são necessárias para o fluxo de IA com imagem.
 
 ---
