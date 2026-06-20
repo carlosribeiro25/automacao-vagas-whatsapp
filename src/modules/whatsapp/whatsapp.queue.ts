@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq'
+import { queueRedisUrl } from '../../lib/queue-redis.js'
 
 export type WhatsappMessageJobData = {
   connectionId: number
@@ -12,7 +13,7 @@ export type WhatsappMessageJobData = {
 }
 
 export const mensagemQueue = new Queue<WhatsappMessageJobData>('mensagem-whatsaap', {
-  connection: { url: process.env.REDIS_URL! },
+  connection: { url: queueRedisUrl },
   skipVersionCheck: true,
   defaultJobOptions: {
     attempts: 3,
