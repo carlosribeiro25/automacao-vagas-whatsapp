@@ -53,7 +53,9 @@ describe('startProcessor', () => {
 
   test('cria Worker com a fila e opções esperadas', async () => {
     process.env.REDIS_URL = 'redis://localhost:6379'
-    const { startProcessor } = await import('../src/modules/whatsapp/whatsapp.processor')
+    const { startProcessor } = await import(
+      '../src/modules/whatsapp/whatsapp.processor'
+    )
 
     startProcessor()
 
@@ -71,7 +73,9 @@ describe('startProcessor', () => {
 
   test('converte base64 em Buffer e dataMensagem em Date antes de chamar o service', async () => {
     process.env.REDIS_URL = 'redis://localhost:6379'
-    const { startProcessor } = await import('../src/modules/whatsapp/whatsapp.processor')
+    const { startProcessor } = await import(
+      '../src/modules/whatsapp/whatsapp.processor'
+    )
 
     startProcessor()
 
@@ -109,7 +113,9 @@ describe('startProcessor', () => {
 
   test('mantém imagemBuffer nulo quando o job não possui mídia', async () => {
     process.env.REDIS_URL = 'redis://localhost:6379'
-    const { startProcessor } = await import('../src/modules/whatsapp/whatsapp.processor')
+    const { startProcessor } = await import(
+      '../src/modules/whatsapp/whatsapp.processor'
+    )
 
     startProcessor()
 

@@ -1,14 +1,9 @@
-
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export async function sendResetEmail(
-  email: string,
-  token: string,
-) {
-  const resetLink =
-    `${process.env.FRONTEND_URL}/reset-password?token=${token}`
+export async function sendResetEmail(email: string, token: string) {
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
 
   try {
     await resend.emails.send({

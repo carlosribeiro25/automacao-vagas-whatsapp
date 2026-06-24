@@ -56,16 +56,21 @@ async function loadManager() {
   return import('../src/modules/whatsapp/whatsapp.connection-manager')
 }
 
-async function createConnection(overrides?: Partial<typeof whatsapp_connections.$inferInsert>) {
+async function createConnection(
+  overrides?: Partial<typeof whatsapp_connections.$inferInsert>,
+) {
   const { user } = await makeUser('user')
 
-  const [connection] = await db.insert(whatsapp_connections).values({
-    userId: user.id,
-    status: 'pending',
-    phone: null,
-    clientKey: `wa-test-${crypto.randomUUID()}`,
-    ...overrides,
-  }).returning()
+  const [connection] = await db
+    .insert(whatsapp_connections)
+    .values({
+      userId: user.id,
+      status: 'pending',
+      phone: null,
+      clientKey: `wa-test-${crypto.randomUUID()}`,
+      ...overrides,
+    })
+    .returning()
 
   return connection
 }
@@ -87,7 +92,9 @@ describe('whatsappConnectionManager', () => {
     const { whatsappConnectionManager } = await loadManager()
 
     const runtime = await whatsappConnectionManager.ensureRuntime(connection.id)
-    const cachedRuntime = await whatsappConnectionManager.ensureRuntime(connection.id)
+    const cachedRuntime = await whatsappConnectionManager.ensureRuntime(
+      connection.id,
+    )
 
     expect(runtime).toEqual({
       client,
@@ -95,8 +102,13 @@ describe('whatsappConnectionManager', () => {
     })
     expect(cachedRuntime).toBe(runtime)
     expect(mocks.createWhatsappClient).toHaveBeenCalledTimes(1)
-    expect(mocks.createWhatsappClient).toHaveBeenCalledWith(connection.clientKey)
-    expect(mocks.bindWhatsappMessageHandlers).toHaveBeenCalledWith(client, connection.id)
+    expect(mocks.createWhatsappClient).toHaveBeenCalledWith(
+      connection.clientKey,
+    )
+    expect(mocks.bindWhatsappMessageHandlers).toHaveBeenCalledWith(
+      client,
+      connection.id,
+    )
     expect(whatsappConnectionManager.getClient(connection.id)).toBe(client)
   })
 
@@ -218,7 +230,9 @@ describe('whatsappConnectionManager', () => {
     expect(updated.status).toBe('disconnected')
     expect(updated.disconnectedAt).toBeTruthy()
     expect(whatsappConnectionManager.getClient(connection.id)).toBeNull()
-    expect(mocks.cleanupWhatsappClientAuth).toHaveBeenCalledWith(connection.clientKey)
+    expect(mocks.cleanupWhatsappClientAuth).toHaveBeenCalledWith(
+      connection.clientKey,
+    )
     expect(mocks.emitWhatsappRuntimeEvent).toHaveBeenCalledWith(connection.id, {
       type: 'status',
       payload: { status: 'disconnected', reason: 'logout' },
@@ -245,7 +259,9 @@ describe('whatsappConnectionManager', () => {
     expect(updated.status).toBe('disconnected')
     expect(updated.disconnectedAt).toBeTruthy()
     expect(whatsappConnectionManager.getClient(connection.id)).toBeNull()
-    expect(mocks.cleanupWhatsappClientAuth).toHaveBeenCalledWith(connection.clientKey)
+    expect(mocks.cleanupWhatsappClientAuth).toHaveBeenCalledWith(
+      connection.clientKey,
+    )
     expect(mocks.emitWhatsappRuntimeEvent).toHaveBeenCalledWith(connection.id, {
       type: 'status',
       payload: { status: 'disconnected' },

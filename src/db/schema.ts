@@ -133,23 +133,29 @@ export const passwordResetTokens = pgTable('passwordResetTokens', {
   useAt: timestamp('used_at', { withTimezone: true }),
 })
 
-export const whatsapp_connections = pgTable('whatsapp_connections', {
-  id: integer().primaryKey().generatedAlwaysAsIdentity(),
-  userId: integer('user_id').references(() => users.id).notNull(),
-  status: whatsappConnectionStatusEnum('status').notNull().default('pending'),
-  phone: text('phone'),
-  clientKey: text('client_key').notNull().unique(),
-  sessionKey: text('session_key'),
-  lastQr: text('last_qr'),
-  lastQrAt: timestamp('last_qr_at', { withTimezone: true }),
-  connectedAt: timestamp('connected_at', { withTimezone: true }),
-  disconnectedAt: timestamp('disconnected_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updateAt: timestamp('update_at', { withTimezone: true }).defaultNow(),
-}, (table) => [
-  index('whatsapp_connections_user_idx').on(table.userId),
-  index('whatsapp_connections_status_idx').on(table.status),
-])
+export const whatsapp_connections = pgTable(
+  'whatsapp_connections',
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userId: integer('user_id')
+      .references(() => users.id)
+      .notNull(),
+    status: whatsappConnectionStatusEnum('status').notNull().default('pending'),
+    phone: text('phone'),
+    clientKey: text('client_key').notNull().unique(),
+    sessionKey: text('session_key'),
+    lastQr: text('last_qr'),
+    lastQrAt: timestamp('last_qr_at', { withTimezone: true }),
+    connectedAt: timestamp('connected_at', { withTimezone: true }),
+    disconnectedAt: timestamp('disconnected_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updateAt: timestamp('update_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('whatsapp_connections_user_idx').on(table.userId),
+    index('whatsapp_connections_status_idx').on(table.status),
+  ],
+)
 
 export const whatsapp_connection_groups = pgTable(
   'whatsapp_connection_groups',

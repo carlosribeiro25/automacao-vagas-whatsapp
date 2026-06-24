@@ -12,11 +12,14 @@ export type WhatsappMessageJobData = {
   dataMensagem: Date
 }
 
-export const mensagemQueue = new Queue<WhatsappMessageJobData>('mensagem-whatsaap', {
-  connection: { url: queueRedisUrl },
-  skipVersionCheck: true,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 5000 },
+export const mensagemQueue = new Queue<WhatsappMessageJobData>(
+  'mensagem-whatsaap',
+  {
+    connection: { url: queueRedisUrl },
+    skipVersionCheck: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+    },
   },
-})
+)

@@ -25,11 +25,10 @@ test('login', async () => {
       name: expect.any(String),
       email: expect.any(String),
       phone: expect.any(String),
-      picture: null
+      picture: null,
+    }),
   })
-    })
-  })
-
+})
 
 test('Credenciais invalidas', async () => {
   await server.ready()

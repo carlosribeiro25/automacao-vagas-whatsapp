@@ -14,8 +14,29 @@ type RuntimeEntry = {
   initialized: boolean
 }
 
+const RETRIABLE_DB_ERROR_PATTERN =
+  /fetch failed|und_err_socket|other side closed|socket|econnreset|etimedout|eai_again|error connecting to database/i
+
 class WhatsappConnectionManager {
   private runtimes = new Map<number, RuntimeEntry>()
+
+  private async wait(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private isRetriableDbError(error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return RETRIABLE_DB_ERROR_PATTERN.test(message)
+  }
+
+  private logRuntimeError(
+    context: string,
+    connectionId: number,
+    error: unknown,
+  ) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[WhatsApp][${context}] conexão=${connectionId}: ${message}`)
+  }
 
   private async getConnection(connectionId: number) {
     const connection = await db
@@ -41,71 +62,140 @@ class WhatsappConnectionManager {
       .where(eq(whatsapp_connections.id, connectionId))
   }
 
+  private async updateConnectionWithRetry(
+    connectionId: number,
+    values: Partial<typeof whatsapp_connections.$inferInsert>,
+    context: string,
+    maxAttempts = 3,
+  ) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await this.updateConnection(connectionId, values)
+        return
+      } catch (error) {
+        const isLastAttempt = attempt === maxAttempts
+        this.logRuntimeError(
+          `${context} attempt=${attempt}/${maxAttempts}`,
+          connectionId,
+          error,
+        )
+
+        if (isLastAttempt || !this.isRetriableDbError(error)) {
+          throw error
+        }
+
+        await this.wait(200 * attempt)
+      }
+    }
+  }
+
   private attachLifecycleHandlers(
     connectionId: number,
     clientKey: string,
     client: WhatsappClient,
   ) {
     client.on('qr', async (qr) => {
-      await this.updateConnection(connectionId, {
-        status: 'qr_ready',
-        lastQr: qr,
-        lastQrAt: new Date(),
-      })
+      try {
+        await this.updateConnectionWithRetry(
+          connectionId,
+          {
+            status: 'qr_ready',
+            lastQr: qr,
+            lastQrAt: new Date(),
+          },
+          'event:qr',
+        )
 
-      emitWhatsappRuntimeEvent(connectionId, {
-        type: 'qr',
-        payload: { status: 'qr_ready', qr },
-      })
+        emitWhatsappRuntimeEvent(connectionId, {
+          type: 'qr',
+          payload: { status: 'qr_ready', qr },
+        })
+      } catch (error) {
+        this.logRuntimeError('event:qr', connectionId, error)
+      }
     })
 
     client.on('authenticated', async () => {
-      await this.updateConnection(connectionId, {
-        status: 'authenticated',
-      })
+      try {
+        await this.updateConnectionWithRetry(
+          connectionId,
+          {
+            status: 'authenticated',
+          },
+          'event:authenticated',
+        )
 
-      emitWhatsappRuntimeEvent(connectionId, {
-        type: 'status',
-        payload: { status: 'authenticated' },
-      })
+        emitWhatsappRuntimeEvent(connectionId, {
+          type: 'status',
+          payload: { status: 'authenticated' },
+        })
+      } catch (error) {
+        this.logRuntimeError('event:authenticated', connectionId, error)
+      }
     })
 
     client.on('ready', async () => {
-      await this.updateConnection(connectionId, {
-        status: 'ready',
-        connectedAt: new Date(),
-      })
+      try {
+        await this.updateConnectionWithRetry(
+          connectionId,
+          {
+            status: 'ready',
+            connectedAt: new Date(),
+          },
+          'event:ready',
+        )
 
-      emitWhatsappRuntimeEvent(connectionId, {
-        type: 'status',
-        payload: { status: 'ready' },
-      })
+        emitWhatsappRuntimeEvent(connectionId, {
+          type: 'status',
+          payload: { status: 'ready' },
+        })
+      } catch (error) {
+        this.logRuntimeError('event:ready', connectionId, error)
+      }
     })
 
     client.on('auth_failure', async (message) => {
-      await this.updateConnection(connectionId, {
-        status: 'failed',
-      })
+      try {
+        await this.updateConnectionWithRetry(
+          connectionId,
+          {
+            status: 'failed',
+          },
+          'event:auth_failure',
+        )
 
-      emitWhatsappRuntimeEvent(connectionId, {
-        type: 'error',
-        payload: { status: 'failed', message },
-      })
+        emitWhatsappRuntimeEvent(connectionId, {
+          type: 'error',
+          payload: { status: 'failed', message },
+        })
+      } catch (error) {
+        this.logRuntimeError('event:auth_failure', connectionId, error)
+      }
     })
 
     client.on('disconnected', async (reason) => {
-      await this.updateConnection(connectionId, {
-        status: 'disconnected',
-        disconnectedAt: new Date(),
-      })
+      try {
+        await this.updateConnectionWithRetry(
+          connectionId,
+          {
+            status: 'disconnected',
+            disconnectedAt: new Date(),
+          },
+          'event:disconnected',
+        )
 
-      cleanupWhatsappClientAuth(clientKey)
-      this.runtimes.delete(connectionId)
+        cleanupWhatsappClientAuth(clientKey)
+        this.runtimes.delete(connectionId)
 
-      emitWhatsappRuntimeEvent(connectionId, {
-        type: 'status',
-        payload: { status: 'disconnected', reason },
-      })
+        emitWhatsappRuntimeEvent(connectionId, {
+          type: 'status',
+          payload: { status: 'disconnected', reason },
+        })
+      } catch (error) {
+        this.logRuntimeError('event:disconnected', connectionId, error)
+        cleanupWhatsappClientAuth(clientKey)
+        this.runtimes.delete(connectionId)
+      }
     })
   }
 
@@ -133,11 +223,55 @@ class WhatsappConnectionManager {
 
     if (!runtime.initialized) {
       runtime.initialized = true
-      await this.updateConnection(connectionId, {
-        status: 'pending',
-        disconnectedAt: null,
+      await this.updateConnectionWithRetry(
+        connectionId,
+        {
+          status: 'pending',
+          disconnectedAt: null,
+        },
+        'startConnection:pending',
+      )
+
+      // Prevent unhandled promise rejections from tearing down the Node process.
+      const initializeResult: unknown = (() => {
+        try {
+          return runtime.client.initialize()
+        } catch (error) {
+          this.logRuntimeError('initialize:sync', connectionId, error)
+          return undefined
+        }
+      })()
+
+      void Promise.resolve(initializeResult).catch((error) => {
+        void (async () => {
+          this.logRuntimeError('initialize', connectionId, error)
+
+          const activeRuntime = this.runtimes.get(connectionId)
+          if (activeRuntime !== runtime) return
+
+          runtime.initialized = false
+          this.runtimes.delete(connectionId)
+
+          await this.updateConnectionWithRetry(
+            connectionId,
+            { status: 'failed', disconnectedAt: new Date() },
+            'initialize:failed',
+          )
+
+          emitWhatsappRuntimeEvent(connectionId, {
+            type: 'error',
+            payload: {
+              status: 'failed',
+              message:
+                error instanceof Error
+                  ? error.message
+                  : 'Falha ao inicializar conexão WhatsApp.',
+            },
+          })
+        })().catch((nestedError) => {
+          this.logRuntimeError('initialize:nested', connectionId, nestedError)
+        })
       })
-      runtime.client.initialize()
     }
 
     return runtime
@@ -148,15 +282,21 @@ class WhatsappConnectionManager {
     const runtime = this.runtimes.get(connectionId)
 
     if (runtime) {
-      await runtime.client.destroy().catch(() => undefined)
+      await runtime.client.destroy().catch((error) => {
+        this.logRuntimeError('destroy', connectionId, error)
+      })
       this.runtimes.delete(connectionId)
     }
 
     cleanupWhatsappClientAuth(connection.clientKey)
-    await this.updateConnection(connectionId, {
-      status: 'disconnected',
-      disconnectedAt: new Date(),
-    })
+    await this.updateConnectionWithRetry(
+      connectionId,
+      {
+        status: 'disconnected',
+        disconnectedAt: new Date(),
+      },
+      'disconnectConnection',
+    )
 
     emitWhatsappRuntimeEvent(connectionId, {
       type: 'status',

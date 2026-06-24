@@ -12,11 +12,20 @@ export const authRouter = async (app) => {
             tags: ['Auth'],
             summary: 'Autenticação do usário com login',
             body: z.object({
-                email: z.email(),
-                password: z.string(),
+                email: z.email().trim(),
+                password: z.string().min(1),
             }),
             response: {
-                200: z.object({ token: z.string() }),
+                200: z.object({
+                    token: z.string(),
+                    user: z.object({
+                        id: z.number(),
+                        name: z.string().nullable(),
+                        email: z.email().nullable(),
+                        phone: z.string().nullable(),
+                        picture: z.string().nullable(),
+                    }),
+                }),
                 400: z.object({ error: z.string() }),
             },
         },
@@ -29,7 +38,15 @@ export const authRouter = async (app) => {
             });
         }
         const user = result[0];
-        const verifyPassword = await verify(user.password, password);
+        let verifyPassword = false;
+        try {
+            verifyPassword = await verify(user.password, password);
+        }
+        catch {
+            return reply.status(400).send({
+                error: 'Credencias inválidas, verifique se o email ou senha estao corretos.',
+            });
+        }
         if (!verifyPassword) {
             return reply.status(400).send({
                 error: 'Credencias inválidas, verifique se o email ou senha estao corretos.',
@@ -52,6 +69,15 @@ export const authRouter = async (app) => {
             path: '/',
             maxAge: TTL_7_DAYS,
         });
-        return reply.status(200).send({ token });
+        return reply.status(200).send({
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                picture: user.picture ?? null,
+            },
+        });
     });
 };

@@ -42,7 +42,9 @@ describe('whatsapp.client', () => {
   })
 
   test('getWhatsappLockfilePath monta o caminho esperado', async () => {
-    const { getWhatsappLockfilePath } = await import('../src/modules/whatsapp/whatsapp.client')
+    const { getWhatsappLockfilePath } = await import(
+      '../src/modules/whatsapp/whatsapp.client'
+    )
 
     const result = getWhatsappLockfilePath('client-123')
 
@@ -52,7 +54,9 @@ describe('whatsapp.client', () => {
   })
 
   test('cleanupWhatsappClientAuth remove o lockfile quando ele existe', async () => {
-    const { cleanupWhatsappClientAuth } = await import('../src/modules/whatsapp/whatsapp.client')
+    const { cleanupWhatsappClientAuth } = await import(
+      '../src/modules/whatsapp/whatsapp.client'
+    )
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
     mocks.existsSync.mockReturnValue(true)
 
@@ -66,7 +70,9 @@ describe('whatsapp.client', () => {
   })
 
   test('cleanupWhatsappClientAuth ignora quando o lockfile não existe', async () => {
-    const { cleanupWhatsappClientAuth } = await import('../src/modules/whatsapp/whatsapp.client')
+    const { cleanupWhatsappClientAuth } = await import(
+      '../src/modules/whatsapp/whatsapp.client'
+    )
     mocks.existsSync.mockReturnValue(false)
 
     cleanupWhatsappClientAuth('client-no-lock')
@@ -75,8 +81,12 @@ describe('whatsapp.client', () => {
   })
 
   test('cleanupWhatsappClientAuth avisa quando falha em todas as tentativas', async () => {
-    const { cleanupWhatsappClientAuth } = await import('../src/modules/whatsapp/whatsapp.client')
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const { cleanupWhatsappClientAuth } = await import(
+      '../src/modules/whatsapp/whatsapp.client'
+    )
+    const warnSpy = vi
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined)
     const waitSpy = vi.spyOn(Atomics, 'wait').mockReturnValue('ok')
 
     mocks.existsSync.mockReturnValue(true)
@@ -94,7 +104,9 @@ describe('whatsapp.client', () => {
   })
 
   test('createWhatsappClient cria Client com LocalAuth e puppeteer headless', async () => {
-    const { createWhatsappClient } = await import('../src/modules/whatsapp/whatsapp.client')
+    const { createWhatsappClient } = await import(
+      '../src/modules/whatsapp/whatsapp.client'
+    )
 
     const client = createWhatsappClient('client-xyz')
 

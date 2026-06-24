@@ -1,2 +1,5 @@
 import { Redis } from 'ioredis';
-export const redisConnection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+import { normalizeRedisUrl } from './redis-url.js';
+export const redisConnection = new Redis(normalizeRedisUrl(process.env.AUTH_REDIS_URL ??
+    process.env.REDIS_URL ??
+    'redis://localhost:6379'));

@@ -91,7 +91,9 @@ export const passwordResetTokens = pgTable('passwordResetTokens', {
 });
 export const whatsapp_connections = pgTable('whatsapp_connections', {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userId: integer('user_id').references(() => users.id).notNull(),
+    userId: integer('user_id')
+        .references(() => users.id)
+        .notNull(),
     status: whatsappConnectionStatusEnum('status').notNull().default('pending'),
     phone: text('phone'),
     clientKey: text('client_key').notNull().unique(),

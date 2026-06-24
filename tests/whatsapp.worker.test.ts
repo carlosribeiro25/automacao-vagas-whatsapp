@@ -47,7 +47,9 @@ describe('bindWhatsappMessageHandlers', () => {
   })
 
   test('registra handlers para message e message_create', async () => {
-    const { bindWhatsappMessageHandlers } = await import('../src/modules/whatsapp/whatsaap.worker')
+    const { bindWhatsappMessageHandlers } = await import(
+      '../src/modules/whatsapp/whatsaap.worker'
+    )
     const client = new FakeClient()
 
     bindWhatsappMessageHandlers(client, 10)
@@ -57,7 +59,9 @@ describe('bindWhatsappMessageHandlers', () => {
   })
 
   test('enfileira mensagem recebida de grupo com payload esperado', async () => {
-    const { bindWhatsappMessageHandlers } = await import('../src/modules/whatsapp/whatsaap.worker')
+    const { bindWhatsappMessageHandlers } = await import(
+      '../src/modules/whatsapp/whatsaap.worker'
+    )
     const client = new FakeClient()
     bindWhatsappMessageHandlers(client, 22)
 
@@ -88,7 +92,9 @@ describe('bindWhatsappMessageHandlers', () => {
   })
 
   test('usa destino como origem quando mensagem foi enviada para grupo/canal', async () => {
-    const { bindWhatsappMessageHandlers } = await import('../src/modules/whatsapp/whatsaap.worker')
+    const { bindWhatsappMessageHandlers } = await import(
+      '../src/modules/whatsapp/whatsaap.worker'
+    )
     const client = new FakeClient()
     bindWhatsappMessageHandlers(client, 23)
 
@@ -118,7 +124,9 @@ describe('bindWhatsappMessageHandlers', () => {
   })
 
   test('extrai midia e nome do arquivo quando a mensagem tem anexo', async () => {
-    const { bindWhatsappMessageHandlers } = await import('../src/modules/whatsapp/whatsaap.worker')
+    const { bindWhatsappMessageHandlers } = await import(
+      '../src/modules/whatsapp/whatsaap.worker'
+    )
     const client = new FakeClient()
     bindWhatsappMessageHandlers(client, 24)
 
@@ -152,7 +160,9 @@ describe('bindWhatsappMessageHandlers', () => {
   })
 
   test('ignora mensagens fora de grupo ou canal', async () => {
-    const { bindWhatsappMessageHandlers } = await import('../src/modules/whatsapp/whatsaap.worker')
+    const { bindWhatsappMessageHandlers } = await import(
+      '../src/modules/whatsapp/whatsaap.worker'
+    )
     const client = new FakeClient()
     bindWhatsappMessageHandlers(client, 25)
 
@@ -173,10 +183,14 @@ describe('bindWhatsappMessageHandlers', () => {
   })
 
   test('captura erro do processamento sem propagar excecao', async () => {
-    const { bindWhatsappMessageHandlers } = await import('../src/modules/whatsapp/whatsaap.worker')
+    const { bindWhatsappMessageHandlers } = await import(
+      '../src/modules/whatsapp/whatsaap.worker'
+    )
     const client = new FakeClient()
     bindWhatsappMessageHandlers(client, 26)
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const errorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
 
     const msg: FakeMessage = {
       from: '120363333333333@g.us',

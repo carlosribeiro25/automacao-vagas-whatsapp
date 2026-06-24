@@ -88,9 +88,7 @@
         "grupos_Whatsaap_whatsaapId_unique": {
           "name": "grupos_Whatsaap_whatsaapId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "whatsaapId"
-          ]
+          "columns": ["whatsaapId"]
         }
       },
       "policies": {},
@@ -233,12 +231,8 @@
           "name": "mensagens_connection_id_whatsapp_connections_id_fk",
           "tableFrom": "mensagens",
           "tableTo": "whatsapp_connections",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -246,12 +240,8 @@
           "name": "mensagens_grupo_id_grupos_Whatsaap_id_fk",
           "tableFrom": "mensagens",
           "tableTo": "grupos_Whatsaap",
-          "columnsFrom": [
-            "grupo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["grupo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -314,12 +304,8 @@
           "name": "passwordResetTokens_user_id_users_id_fk",
           "tableFrom": "passwordResetTokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -329,9 +315,7 @@
         "passwordResetTokens_token_unique": {
           "name": "passwordResetTokens_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -419,9 +403,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -643,12 +625,8 @@
           "name": "vagas_connection_id_whatsapp_connections_id_fk",
           "tableFrom": "vagas",
           "tableTo": "whatsapp_connections",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -656,12 +634,8 @@
           "name": "vagas_mensagem_id_mensagens_id_fk",
           "tableFrom": "vagas",
           "tableTo": "mensagens",
-          "columnsFrom": [
-            "mensagem_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mensagem_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -791,12 +765,8 @@
           "name": "whatsapp_connection_groups_connection_id_whatsapp_connections_id_fk",
           "tableFrom": "whatsapp_connection_groups",
           "tableTo": "whatsapp_connections",
-          "columnsFrom": [
-            "connection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["connection_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -804,12 +774,8 @@
           "name": "whatsapp_connection_groups_group_id_grupos_Whatsaap_id_fk",
           "tableFrom": "whatsapp_connection_groups",
           "tableTo": "grupos_Whatsaap",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -949,12 +915,8 @@
           "name": "whatsapp_connections_user_id_users_id_fk",
           "tableFrom": "whatsapp_connections",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -964,9 +926,7 @@
         "whatsapp_connections_client_key_unique": {
           "name": "whatsapp_connections_client_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "client_key"
-          ]
+          "columns": ["client_key"]
         }
       },
       "policies": {},
@@ -978,20 +938,12 @@
     "public.modality": {
       "name": "modality",
       "schema": "public",
-      "values": [
-        "Remoto",
-        "Hibrido",
-        "Presencial",
-        "Home Office"
-      ]
+      "values": ["Remoto", "Hibrido", "Presencial", "Home Office"]
     },
     "public.user_role": {
       "name": "user_role",
       "schema": "public",
-      "values": [
-        "manager",
-        "user"
-      ]
+      "values": ["manager", "user"]
     },
     "public.whatsapp_connection_status": {
       "name": "whatsapp_connection_status",

@@ -1,6 +1,7 @@
 import { Queue } from 'bullmq';
+import { queueRedisUrl } from '../../lib/queue-redis.js';
 export const mensagemQueue = new Queue('mensagem-whatsaap', {
-    connection: { url: process.env.REDIS_URL },
+    connection: { url: queueRedisUrl },
     skipVersionCheck: true,
     defaultJobOptions: {
         attempts: 3,

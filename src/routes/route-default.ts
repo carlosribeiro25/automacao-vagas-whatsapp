@@ -10,8 +10,6 @@ export async function routeDefault(app: FastifyInstance) {
 
 export async function health(app: FastifyInstance) {
   app.get('/health', (request, reply) => {
-    return reply
-      .status(200)
-      .send({ status: 'Nossa api esta em produção.' })
+    return reply.status(200).send({ status: 'Nossa api esta em produção.' })
   })
 }

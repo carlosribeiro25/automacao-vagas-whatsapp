@@ -7,8 +7,6 @@ export async function routeDefault(app) {
 }
 export async function health(app) {
     app.get('/health', (request, reply) => {
-        return reply
-            .status(200)
-            .send({ status: 'Nossa api esta em produção.' });
+        return reply.status(200).send({ status: 'Nossa api esta em produção.' });
     });
 }

@@ -1,5 +1,6 @@
 import { Worker } from 'bullmq';
 import { processarMensagemWhatsapp } from './whatsapp.service.js';
+import { queueRedisUrl } from '../../lib/queue-redis.js';
 export function startProcessor() {
     console.log('[Processor] BullMQ worker iniciado, aguardando jobs...');
     new Worker('mensagem-whatsaap', async (job) => {
@@ -14,7 +15,7 @@ export function startProcessor() {
         await processarMensagemWhatsapp(dados);
         console.log(`[Processor] Job #${job.id} concluído.`);
     }, {
-        connection: { url: process.env.REDIS_URL },
+        connection: { url: queueRedisUrl },
         skipVersionCheck: true,
         concurrency: 3,
     });

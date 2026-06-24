@@ -2,7 +2,36 @@ import type pkg from 'whatsapp-web.js'
 import { mensagemQueue } from './whatsapp.queue.js'
 
 type WhatsappClientLike = {
-  on(event: 'message' | 'message_create', listener: (msg: pkg.Message) => void): void
+  on(
+    event: 'message' | 'message_create',
+    listener: (msg: pkg.Message) => void,
+  ): void
+}
+
+const RECENT_MESSAGE_WINDOW_MS = 15_000
+const recentMessages = new Map<string, number>()
+
+function shouldIgnoreDuplicateMessage(messageId: string | undefined) {
+  if (!messageId) return false
+
+  const now = Date.now()
+  const previous = recentMessages.get(messageId)
+
+  if (previous && now - previous < RECENT_MESSAGE_WINDOW_MS) {
+    return true
+  }
+
+  recentMessages.set(messageId, now)
+
+  if (recentMessages.size > 5_000) {
+    for (const [id, timestamp] of recentMessages) {
+      if (now - timestamp > RECENT_MESSAGE_WINDOW_MS) {
+        recentMessages.delete(id)
+      }
+    }
+  }
+
+  return false
 }
 
 export function bindWhatsappMessageHandlers(
@@ -10,6 +39,10 @@ export function bindWhatsappMessageHandlers(
   connectionId: number,
 ) {
   const handler = async (msg: pkg.Message) => {
+    if (shouldIgnoreDuplicateMessage(msg.id?._serialized)) {
+      return
+    }
+
     console.log('[Worker] Mensagem recebida de:', msg.from, '→', msg.to)
     try {
       const origem =

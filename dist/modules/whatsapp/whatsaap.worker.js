@@ -1,6 +1,29 @@
 import { mensagemQueue } from './whatsapp.queue.js';
+const RECENT_MESSAGE_WINDOW_MS = 15_000;
+const recentMessages = new Map();
+function shouldIgnoreDuplicateMessage(messageId) {
+    if (!messageId)
+        return false;
+    const now = Date.now();
+    const previous = recentMessages.get(messageId);
+    if (previous && now - previous < RECENT_MESSAGE_WINDOW_MS) {
+        return true;
+    }
+    recentMessages.set(messageId, now);
+    if (recentMessages.size > 5_000) {
+        for (const [id, timestamp] of recentMessages) {
+            if (now - timestamp > RECENT_MESSAGE_WINDOW_MS) {
+                recentMessages.delete(id);
+            }
+        }
+    }
+    return false;
+}
 export function bindWhatsappMessageHandlers(client, connectionId) {
     const handler = async (msg) => {
+        if (shouldIgnoreDuplicateMessage(msg.id?._serialized)) {
+            return;
+        }
         console.log('[Worker] Mensagem recebida de:', msg.from, '→', msg.to);
         try {
             const origem = msg.from.endsWith('@g.us') || msg.from.endsWith('@newsletter')
