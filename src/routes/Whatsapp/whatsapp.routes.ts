@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { db } from '@/db/index.js'
 import {
   grupos_whatsapp,
+  mensagens,
+  vagas,
   whatsapp_connection_groups,
   whatsapp_connections,
 } from '@/db/schema.js'
@@ -70,6 +72,57 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         phone: connection.phone ?? null,
         clientKey: connection.clientKey,
       }))
+    },
+  )
+
+  app.delete(
+    '/whatsapp/connections/:id/delete',
+    {
+      preHandler: checkAutentication,
+      schema: {
+        tags: ['Whatsapp'],
+        params: z.object({
+          id: z.coerce.number(),
+        }),
+        response: {
+          200: z.object({ message: z.string() }),
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+      const userId = Number(getAuthUserReq(request).sub)
+
+      const connection = await getOwnedConnection(id, userId)
+
+      if (!connection) {
+        return reply.status(404).send({ error: 'Conexao nao encontrada' })
+      }
+
+      await db.delete(vagas).where(eq(vagas.connectionId, id))
+      await db.delete(mensagens).where(eq(mensagens.connectionId, id))
+      await db
+        .delete(whatsapp_connection_groups)
+        .where(eq(whatsapp_connection_groups.connectionId, id))
+
+      const deletedConnection = db
+        .delete(whatsapp_connections)
+        .where(
+          and(
+            eq(whatsapp_connections.id, id),
+            eq(whatsapp_connections.userId, userId),
+          ),
+        )
+        .returning()
+
+      if ((await deletedConnection).length > 0) {
+        return reply
+          .status(200)
+          .send({ message: 'Conexao deletada com sucesso' })
+      }
+
+      return reply.status(404).send({ error: 'Conexao nao encontrada' })
     },
   )
 
@@ -203,7 +256,6 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
             }),
           ),
           404: z.object({ error: z.string() }),
-          409: z.object({ error: z.string() }),
         },
       },
     },
@@ -218,15 +270,11 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
 
       const client = whatsappConnectionManager.getClient(id)
       if (!client) {
-        return reply.status(409).send({
-          error: 'Conexão WhatsApp ainda não foi iniciada.',
-        })
+        return reply.status(200).send([])
       }
 
       if (connection.status !== 'ready') {
-        return reply.status(409).send({
-          error: `Conexão WhatsApp ainda não está pronta (status: ${connection.status}). Aguarde o QR ser escaneado.`,
-        })
+        return reply.status(200).send([])
       }
 
       const chats = await client.getChats()
@@ -307,7 +355,10 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         tags: ['WhatsApp'],
         params: z.object({ id: z.coerce.number().int().positive() }),
         body: z.object({
-          groupIds: z.array(z.number().int().positive()),
+          groupIds: z
+            .array(z.coerce.number().int().positive())
+            .optional()
+            .default([]),
         }),
         response: {
           200: z.object({ success: z.boolean() }),
