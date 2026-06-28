@@ -8,6 +8,7 @@ export const refreshToken = async (app) => {
             response: {
                 200: z.object({ accessToken: z.string() }),
                 401: z.object({ error: z.string() }),
+                503: z.object({ error: z.string() }),
             },
         },
     }, async (request, reply) => {
@@ -17,7 +18,16 @@ export const refreshToken = async (app) => {
                 .status(401)
                 .send({ error: 'Refresh token inválido ou expirado.' });
         }
-        const userId = await redisConnection.get(`refresh:${refreshToken}`);
+        let userId = null;
+        try {
+            userId = await redisConnection.get(`refresh:${refreshToken}`);
+        }
+        catch (error) {
+            request.log.error({ error }, 'Falha ao consultar refresh token no Redis');
+            return reply
+                .status(503)
+                .send({ error: 'Serviço de sessão temporariamente indisponível.' });
+        }
         if (!userId) {
             return reply
                 .status(401)
@@ -29,10 +39,26 @@ export const refreshToken = async (app) => {
         const newAccessToken = jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
             expiresIn: '30m',
         });
-        await redisConnection.del(`refresh:${refreshToken}`);
+        try {
+            await redisConnection.del(`refresh:${refreshToken}`);
+        }
+        catch (error) {
+            request.log.error({ error }, 'Falha ao invalidar refresh token antigo no Redis');
+            return reply
+                .status(503)
+                .send({ error: 'Serviço de sessão temporariamente indisponível.' });
+        }
         const newRefreshToken = randomUUID();
         const TTL_7_DAYS = 60 * 60 * 24 * 7;
-        await redisConnection.set(`refresh:${newRefreshToken}`, userId, 'EX', TTL_7_DAYS);
+        try {
+            await redisConnection.set(`refresh:${newRefreshToken}`, userId, 'EX', TTL_7_DAYS);
+        }
+        catch (error) {
+            request.log.error({ error }, 'Falha ao salvar novo refresh token no Redis');
+            return reply
+                .status(503)
+                .send({ error: 'Serviço de sessão temporariamente indisponível.' });
+        }
         const isProd = process.env.NODE_ENV === 'production';
         reply.setCookie('refreshToken', newRefreshToken, {
             httpOnly: true,

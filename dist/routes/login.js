@@ -27,6 +27,7 @@ export const authRouter = async (app) => {
                     }),
                 }),
                 400: z.object({ error: z.string() }),
+                503: z.object({ error: z.string() }),
             },
         },
     }, async (request, reply) => {
@@ -60,7 +61,15 @@ export const authRouter = async (app) => {
         });
         const refreshToken = randomUUID();
         const TTL_7_DAYS = 60 * 60 * 24 * 7;
-        await redisConnection.set(`refresh:${refreshToken}`, user.id, 'EX', TTL_7_DAYS);
+        try {
+            await redisConnection.set(`refresh:${refreshToken}`, user.id, 'EX', TTL_7_DAYS);
+        }
+        catch (error) {
+            request.log.error({ error }, 'Falha ao persistir refresh token no Redis durante login');
+            return reply.status(503).send({
+                error: 'Serviço de sessão temporariamente indisponível.',
+            });
+        }
         const isProd = process.env.NODE_ENV === 'production';
         reply.setCookie('refreshToken', refreshToken, {
             httpOnly: true,
