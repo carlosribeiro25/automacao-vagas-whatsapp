@@ -256,6 +256,7 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
             }),
           ),
           404: z.object({ error: z.string() }),
+          503: z.object({ error: z.string() }),
         },
       },
     },
@@ -277,7 +278,18 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         return reply.status(200).send([])
       }
 
-      const chats = await client.getChats()
+      let chats: Awaited<ReturnType<typeof client.getChats>>
+      try {
+        chats = await client.getChats()
+      } catch (error) {
+        request.log.error(
+          { err: error },
+          'Falha ao sincronizar grupos do WhatsApp',
+        )
+        return reply.status(503).send({
+          error: 'WhatsApp ocupado, tente novamente em instantes.',
+        })
+      }
       const syncedGroups: Array<{
         id: number
         name: string

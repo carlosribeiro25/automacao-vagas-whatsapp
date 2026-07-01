@@ -33,6 +33,7 @@ export function createWhatsappClient(clientKey) {
         puppeteer: {
             headless: true,
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+            protocolTimeout: 300_000,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',

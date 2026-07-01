@@ -44,10 +44,20 @@ export function createWhatsappClient(clientKey: string): WhatsappClient {
     puppeteer: {
       headless: true,
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+      protocolTimeout: 300_000,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-extensions',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--js-flags=--max-old-space-size=256',
       ],
     },
   }) as WhatsappClient

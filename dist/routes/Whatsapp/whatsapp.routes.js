@@ -183,6 +183,7 @@ export const whatsappRoutes = async (app) => {
                     selected: z.boolean(),
                 })),
                 404: z.object({ error: z.string() }),
+                503: z.object({ error: z.string() }),
             },
         },
     }, async (request, reply) => {
@@ -199,7 +200,16 @@ export const whatsappRoutes = async (app) => {
         if (connection.status !== 'ready') {
             return reply.status(200).send([]);
         }
-        const chats = await client.getChats();
+        let chats;
+        try {
+            chats = await client.getChats();
+        }
+        catch (error) {
+            request.log.error({ err: error }, 'Falha ao sincronizar grupos do WhatsApp');
+            return reply.status(503).send({
+                error: 'WhatsApp ocupado, tente novamente em instantes.',
+            });
+        }
         const syncedGroups = [];
         for (const chat of chats) {
             const normalizedChat = chat;
