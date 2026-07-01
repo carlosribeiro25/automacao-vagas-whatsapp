@@ -46,6 +46,10 @@ vi.mock('../src/modules/whatsapp/whatsapp.service', () => ({
   processarMensagemWhatsapp: mocks.processarMensagemWhatsapp,
 }))
 
+vi.mock('../src/lib/queue-redis', () => ({
+  queueRedisUrl: 'redis://localhost:6379',
+}))
+
 describe('startProcessor', () => {
   beforeEach(() => {
     vi.clearAllMocks()

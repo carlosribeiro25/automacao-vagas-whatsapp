@@ -117,8 +117,6 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
         summary: 'Endpoint para  pesquisa de Vagas',
         querystring: z.object({
           q: z.string().trim().min(1),
-          page: z.coerce.number().min(1).default(1),
-          limit: z.coerce.number().min(1).max(100).default(10),
         }),
         response: {
           200: z.object({
@@ -149,7 +147,7 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const { q, page, limit } = request.query
+      const { q  } = request.query
 
       // implementação da logica para busca na barra de pesquisa por palavras chave. linha 149 - 172.
       const cleanQ = q.replace(/\bvagas?\b/gi, '').trim()
@@ -187,8 +185,6 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
         .from(vagas)
         .where(whereClause)
         .orderBy(sql`ts_rank(search_vector, ${tsQuery}) DESC`)
-        .limit(limit)
-        .offset((page - 1) * limit)
 
       if (resultSearch.length === 0) {
         return reply

@@ -53,6 +53,7 @@ test('Usuario nao encontrado', async () => {
 test('Conflitos de email existente', async () => {
   await server.ready()
 
+  const { user: existingUser } = await makeUser()
   const { user } = await makeUser()
 
   const { token } = await authenticationUser('user')
@@ -62,7 +63,7 @@ test('Conflitos de email existente', async () => {
     .set('Authorization', token)
     .set('Content-Type', 'application/json')
     .send({
-      email: 'margarida.barros@hotmail.com',
+      email: existingUser.email,
       phone: faker.phone.number(),
       password: faker.string.uuid(),
       picture: faker.image.avatar(),
