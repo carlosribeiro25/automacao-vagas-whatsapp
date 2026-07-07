@@ -1,30 +1,30 @@
-import fs from 'fs';
-import path from 'path';
-import { openai } from '../../services/openai.services.js';
-import { vagaSchema } from '../vagas/vaga.schema.js';
+import fs from 'fs'
+import path from 'path'
+import { openai } from '../../services/openai.services.js'
+import { vagaSchema } from '../vagas/vaga.schema.js'
 const SUPPORTED_MIME_TYPES = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    webp: 'image/webp',
-};
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+}
 export async function extractJobDataFromImage(imagePath) {
-    const ext = path.extname(imagePath).slice(1).toLowerCase();
-    const mimeType = SUPPORTED_MIME_TYPES[ext];
-    if (!mimeType) {
-        console.log(`[Vision] Formato de imagem não suportado: .${ext}, ignorando.`);
-        return null;
-    }
-    const base64Image = fs.readFileSync(imagePath, {
-        encoding: 'base64',
-    });
-    const response = await openai.chat.completions.create({
-        model: 'gpt-5',
-        messages: [
-            {
-                role: 'system',
-                content: `
+  const ext = path.extname(imagePath).slice(1).toLowerCase()
+  const mimeType = SUPPORTED_MIME_TYPES[ext]
+  if (!mimeType) {
+    console.log(`[Vision] Formato de imagem não suportado: .${ext}, ignorando.`)
+    return null
+  }
+  const base64Image = fs.readFileSync(imagePath, {
+    encoding: 'base64',
+  })
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5',
+    messages: [
+      {
+        role: 'system',
+        content: `
 Você é um sistema especialista em análise de mensagens e imagens de vagas de emprego.
 
 Sua tarefa é:
@@ -110,55 +110,56 @@ Saída:
   "Marketing"
   etc.
           `,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Extraia os dados dessa vaga',
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${mimeType};base64,${base64Image}`,
             },
-            {
-                role: 'user',
-                content: [
-                    {
-                        type: 'text',
-                        text: 'Extraia os dados dessa vaga',
-                    },
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: `data:${mimeType};base64,${base64Image}`,
-                        },
-                    },
-                ],
-            },
+          },
         ],
-        response_format: {
-            type: 'json_object',
-        },
-    });
-    if (!fs.existsSync(imagePath)) {
-        throw new Error('Image not found!');
-    }
-    const content = response.choices[0].message.content || '{}';
-    let parsed;
-    try {
-        parsed = JSON.parse(content);
-    }
-    catch (error) {
-        console.error('[Vision] Erro ao parsear JSON da IA:', content);
-        return null;
-    }
-    console.log('[Vision] Resposta da IA:', JSON.stringify(parsed, null, 2));
-    try {
-        return vagaSchema.parse(parsed);
-    }
-    catch (error) {
-        console.error('[Vision] Erro na validação do schema Zod:', JSON.stringify(error, null, 2));
-        return null;
-    }
+      },
+    ],
+    response_format: {
+      type: 'json_object',
+    },
+  })
+  if (!fs.existsSync(imagePath)) {
+    throw new Error('Image not found!')
+  }
+  const content = response.choices[0].message.content || '{}'
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch (error) {
+    console.error('[Vision] Erro ao parsear JSON da IA:', content)
+    return null
+  }
+  console.log('[Vision] Resposta da IA:', JSON.stringify(parsed, null, 2))
+  try {
+    return vagaSchema.parse(parsed)
+  } catch (error) {
+    console.error(
+      '[Vision] Erro na validação do schema Zod:',
+      JSON.stringify(error, null, 2),
+    )
+    return null
+  }
 }
 export async function extractJobDataFromText(texto) {
-    const response = await openai.chat.completions.create({
-        model: 'gpt-5',
-        messages: [
-            {
-                role: 'system',
-                content: `
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5',
+    messages: [
+      {
+        role: 'system',
+        content: `
 Você é um sistema especialista em análise de mensagens de vagas de emprego.
 
 Sua tarefa é:
@@ -196,29 +197,30 @@ REGRAS:
 - texto_extraido deve conter o texto original da mensagem.
 - modality: "Remoto", "Hibrido", "Presencial" ou "Home Office".
         `,
-            },
-            {
-                role: 'user',
-                content: texto,
-            },
-        ],
-        response_format: { type: 'json_object' },
-    });
-    const content = response.choices[0].message.content || '{}';
-    let parsed;
-    try {
-        parsed = JSON.parse(content);
-    }
-    catch {
-        console.error('[Vision] Erro ao parsear JSON do texto:', content);
-        return null;
-    }
-    console.log('[Vision] Resposta texto da IA:', JSON.stringify(parsed, null, 2));
-    try {
-        return vagaSchema.parse(parsed);
-    }
-    catch (error) {
-        console.error('[Vision] Erro na validação Zod (texto):', JSON.stringify(error, null, 2));
-        return null;
-    }
+      },
+      {
+        role: 'user',
+        content: texto,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  })
+  const content = response.choices[0].message.content || '{}'
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    console.error('[Vision] Erro ao parsear JSON do texto:', content)
+    return null
+  }
+  console.log('[Vision] Resposta texto da IA:', JSON.stringify(parsed, null, 2))
+  try {
+    return vagaSchema.parse(parsed)
+  } catch (error) {
+    console.error(
+      '[Vision] Erro na validação Zod (texto):',
+      JSON.stringify(error, null, 2),
+    )
+    return null
+  }
 }

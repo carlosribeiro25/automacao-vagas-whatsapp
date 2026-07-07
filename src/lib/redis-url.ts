@@ -1,9 +1,6 @@
 // Normalize Redis URL: only Upstash endpoints require forced TLS.
 function shouldForceTls(hostname: string): boolean {
-  return (
-    hostname.endsWith('.upstash.io') ||
-    hostname.endsWith('.upstash.com')
-  )
+  return hostname.endsWith('.upstash.io') || hostname.endsWith('.upstash.com')
 }
 
 export function normalizeRedisUrl(rawUrl: string): string {

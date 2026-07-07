@@ -12,22 +12,17 @@ test('Vaga cadastrada com sucesso', async () => {
     .send({
       title: faker.lorem.words(4),
       message: faker.lorem.words(4),
-      mensagemId: null,
       tipo_vaga: faker.lorem.word(),
       description: faker.lorem.words(4),
       category: faker.lorem.word(),
       company: faker.lorem.words(2),
-      texto_extraido: faker.lorem.words(4),
-      imagem_original_url: faker.internet.url(),
       requirements: faker.lorem.words(4),
       modality: 'Remoto',
       salary: faker.number.int({ min: 1, max: 30000 }),
       benefits: faker.lorem.words(4),
-      group_name: faker.lorem.words(4),
       contact: faker.lorem.words(4),
       link: faker.internet.url(),
       location: faker.lorem.words(2),
-      is_job: true,
     })
 
   expect(response.status).toEqual(201)
@@ -46,22 +41,17 @@ test('Testar modalidade fora da modality enum', async () => {
     .send({
       title: faker.lorem.words(4),
       message: faker.lorem.words(4),
-      mensagemId: null,
       tipo_vaga: faker.lorem.word(),
       description: faker.lorem.words(4),
       category: faker.lorem.word(),
       company: faker.lorem.words(2),
-      texto_extraido: faker.lorem.words(4),
-      imagem_original_url: faker.internet.url(),
       requirements: faker.lorem.words(4),
       modality: 'Qualquer uma',
       salary: faker.lorem.word(),
       benefits: faker.lorem.words(4),
-      group_name: faker.lorem.words(4),
       contact: faker.lorem.words(4),
       link: faker.internet.url(),
       location: faker.lorem.words(2),
-      is_job: true,
     })
   expect(response.status).toEqual(400)
   expect(response.body).toEqual({

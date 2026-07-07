@@ -70,7 +70,7 @@ export const createVagas: FastifyPluginAsyncZod = async (server) => {
             benefits,
             contact,
             link,
-            location
+            location,
           })
           .returning({ id: vagas.id })
 
