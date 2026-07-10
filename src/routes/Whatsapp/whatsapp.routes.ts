@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { db } from '@/db/index.js'
+import { withDbRetry } from '@/db/retry.js'
 import {
   grupos_whatsapp,
   mensagens,
@@ -60,10 +61,13 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request) => {
       const userId = Number(getAuthUserReq(request).sub)
 
-      const connections = await db
-        .select()
-        .from(whatsapp_connections)
-        .where(eq(whatsapp_connections.userId, userId))
+      const connections = await withDbRetry(() =>
+        db
+          .select()
+          .from(whatsapp_connections)
+          .where(eq(whatsapp_connections.userId, userId))
+          .execute(),
+      )
 
       return connections.map((connection) => ({
         id: connection.id,
@@ -100,23 +104,29 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         return reply.status(404).send({ error: 'Conexao nao encontrada' })
       }
 
-      await db.delete(vagas).where(eq(vagas.connectionId, id))
-      await db.delete(mensagens).where(eq(mensagens.connectionId, id))
-      await db
-        .delete(whatsapp_connection_groups)
-        .where(eq(whatsapp_connection_groups.connectionId, id))
+      await withDbRetry(() => db.delete(vagas).where(eq(vagas.connectionId, id)).execute())
+      await withDbRetry(() => db.delete(mensagens).where(eq(mensagens.connectionId, id)).execute())
+      await withDbRetry(() =>
+        db
+          .delete(whatsapp_connection_groups)
+          .where(eq(whatsapp_connection_groups.connectionId, id))
+          .execute(),
+      )
 
-      const deletedConnection = db
-        .delete(whatsapp_connections)
-        .where(
-          and(
-            eq(whatsapp_connections.id, id),
-            eq(whatsapp_connections.userId, userId),
-          ),
-        )
-        .returning()
+      const deletedConnection = await withDbRetry(() =>
+        db
+          .delete(whatsapp_connections)
+          .where(
+            and(
+              eq(whatsapp_connections.id, id),
+              eq(whatsapp_connections.userId, userId),
+            ),
+          )
+          .returning()
+          .execute(),
+      )
 
-      if ((await deletedConnection).length > 0) {
+      if (deletedConnection.length > 0) {
         return reply
           .status(200)
           .send({ message: 'Conexao deletada com sucesso' })
@@ -145,15 +155,18 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
       const userId = Number(getAuthUserReq(request).sub)
       const clientKey = `wa-${userId}-${randomUUID()}`
 
-      const [connection] = await db
-        .insert(whatsapp_connections)
-        .values({
-          userId,
-          clientKey,
-          phone: null,
-          status: 'pending',
-        })
-        .returning()
+      const [connection] = await withDbRetry(() =>
+        db
+          .insert(whatsapp_connections)
+          .values({
+            userId,
+            clientKey,
+            phone: null,
+            status: 'pending',
+          })
+          .returning()
+          .execute(),
+      )
 
       return reply.status(201).send({
         id: connection.id,
@@ -280,7 +293,12 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
 
       let chats: Awaited<ReturnType<typeof client.getChats>>
       try {
-        chats = await client.getChats()
+        chats = await Promise.race([
+          client.getChats(),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('timeout')), 30_000)
+          }),
+        ])
       } catch (error) {
         request.log.error(
           { err: error },
@@ -310,42 +328,52 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
 
         if (!whatsappId || !isSelectableGroup) continue
 
-        let group = await db
-          .select()
-          .from(grupos_whatsapp)
-          .where(eq(grupos_whatsapp.whatsaapId, whatsappId))
-          .then((rows) => rows[0])
+        let group = await withDbRetry(() =>
+          db
+            .select()
+            .from(grupos_whatsapp)
+            .where(eq(grupos_whatsapp.whatsaapId, whatsappId))
+            .then((rows) => rows[0]),
+        )
 
         if (!group) {
-          const [insertedGroup] = await db
-            .insert(grupos_whatsapp)
-            .values({
-              name: normalizedChat.name,
-              whatsaapId: whatsappId,
-            })
-            .returning()
+          const [insertedGroup] = await withDbRetry(() =>
+            db
+              .insert(grupos_whatsapp)
+              .values({
+                name: normalizedChat.name,
+                whatsaapId: whatsappId,
+              })
+              .returning()
+              .execute(),
+          )
 
           group = insertedGroup
         }
 
-        await db
-          .insert(whatsapp_connection_groups)
-          .values({
-            connectionId: id,
-            groupId: group.id,
-          })
-          .onConflictDoNothing()
+        await withDbRetry(() =>
+          db
+            .insert(whatsapp_connection_groups)
+            .values({
+              connectionId: id,
+              groupId: group.id,
+            })
+            .onConflictDoNothing()
+            .execute(),
+        )
 
-        const relation = await db
-          .select()
-          .from(whatsapp_connection_groups)
-          .where(
-            and(
-              eq(whatsapp_connection_groups.connectionId, id),
-              eq(whatsapp_connection_groups.groupId, group.id),
-            ),
-          )
-          .then((rows) => rows[0])
+        const relation = await withDbRetry(() =>
+          db
+            .select()
+            .from(whatsapp_connection_groups)
+            .where(
+              and(
+                eq(whatsapp_connection_groups.connectionId, id),
+                eq(whatsapp_connection_groups.groupId, group.id),
+              ),
+            )
+            .then((rows) => rows[0]),
+        )
 
         syncedGroups.push({
           id: group.id,

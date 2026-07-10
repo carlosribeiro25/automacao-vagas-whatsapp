@@ -1,4 +1,5 @@
 import { db } from '@/db/index.js'
+import { withDbRetry } from '@/db/retry.js'
 import { vagas } from '@/db/schema.js'
 import { and, count, desc, eq, getTableColumns, sql, SQL } from 'drizzle-orm'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
@@ -32,14 +33,19 @@ export const getVagas: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const { page, limit } = request.query
 
-      const [{ total }] = await db.select({ total: count() }).from(vagas)
+      const [{ total }] = await withDbRetry(() =>
+        db.select({ total: count() }).from(vagas).execute(),
+      )
 
-      const result = await db
-        .select()
-        .from(vagas)
-        .orderBy(desc(vagas.publisheAt))
-        .limit(limit)
-        .offset((page - 1) * limit)
+      const result = await withDbRetry(() =>
+        db
+          .select()
+          .from(vagas)
+          .orderBy(desc(vagas.publisheAt))
+          .limit(limit)
+          .offset((page - 1) * limit)
+          .execute(),
+      )
 
       if (!result || result.length === 0) {
         return reply.status(404).send({ error: 'Nenhuma vaga encontrada' })
@@ -90,11 +96,14 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
       if (location) filters.push(eq(vagas.location, location))
       if (publisheAt) filters.push(eq(vagas.publisheAt, new Date(publisheAt)))
 
-      const resultFilter = await db
-        .select()
-        .from(vagas)
-        .where(and(...filters))
-        .orderBy(desc(vagas.publisheAt))
+      const resultFilter = await withDbRetry(() =>
+        db
+          .select()
+          .from(vagas)
+          .where(and(...filters))
+          .orderBy(desc(vagas.publisheAt))
+          .execute(),
+      )
 
       if (!resultFilter || resultFilter.length === 0) {
         return reply
@@ -174,21 +183,29 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
           ? sql`search_vector @@ ${tsQuery} OR (${sql.join(ilikeParts, sql` AND `)})`
           : sql`search_vector @@ ${tsQuery}`
 
-      const [{ total }] = await db
-        .select({ total: count() })
-        .from(vagas)
-        .where(whereClause)
+      const [{ total }] = await withDbRetry(() =>
+        db.select({ total: count() }).from(vagas).where(whereClause).execute(),
+      )
 
-      const resultSearch = await db
-        .select({
-          ...getTableColumns(vagas),
-          rank: sql<number>`ts_rank(search_vector, ${tsQuery})`,
-        })
-        .from(vagas)
-        .where(whereClause)
-        .orderBy(sql`ts_rank(search_vector, ${tsQuery}) DESC`)
-        .limit(limit)
-        .offset((page - 1) * limit)
+      const resultSearch = await withDbRetry(() =>
+        db
+          .select({
+            ...getTableColumns(vagas),
+            rank: sql<number>`ts_rank(search_vector, ${tsQuery})`,
+          })
+          .from(vagas)
+          .where(whereClause)
+          .orderBy(sql`ts_rank(search_vector, ${tsQuery}) DESC`)
+          .limit(limit)
+          .offset((page - 1) * limit)
+          .execute(),
+      )
+
+      if (!resultSearch || resultSearch.length === 0) {
+        return reply
+          .status(404)
+          .send({ error: 'Nenhuma vaga encontrada para a pesquisa' })
+      }
 
       return reply.status(200).send({ vagas: resultSearch, total })
     },

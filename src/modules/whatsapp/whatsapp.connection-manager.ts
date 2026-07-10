@@ -1,4 +1,5 @@
 import { db } from '@/db/index.js'
+import { withDbRetry } from '@/db/retry.js'
 import { whatsapp_connections } from '@/db/schema.js'
 import { eq } from 'drizzle-orm'
 import {
@@ -14,19 +15,11 @@ type RuntimeEntry = {
   initialized: boolean
 }
 
-const RETRIABLE_DB_ERROR_PATTERN =
-  /fetch failed|und_err_socket|other side closed|socket|econnreset|etimedout|eai_again|error connecting to database/i
-
 class WhatsappConnectionManager {
   private runtimes = new Map<number, RuntimeEntry>()
 
   private async wait(ms: number) {
     await new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  private isRetriableDbError(error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
-    return RETRIABLE_DB_ERROR_PATTERN.test(message)
   }
 
   private logRuntimeError(
@@ -39,11 +32,13 @@ class WhatsappConnectionManager {
   }
 
   private async getConnection(connectionId: number) {
-    const connection = await db
-      .select()
-      .from(whatsapp_connections)
-      .where(eq(whatsapp_connections.id, connectionId))
-      .then((rows) => rows[0])
+    const connection = await withDbRetry(() =>
+      db
+        .select()
+        .from(whatsapp_connections)
+        .where(eq(whatsapp_connections.id, connectionId))
+        .then((rows) => rows[0]),
+    )
 
     if (!connection) {
       throw new Error('Conexão WhatsApp não encontrada.')
@@ -60,6 +55,7 @@ class WhatsappConnectionManager {
       .update(whatsapp_connections)
       .set({ ...values, updateAt: new Date() })
       .where(eq(whatsapp_connections.id, connectionId))
+      .execute()
   }
 
   private async updateConnectionWithRetry(
@@ -68,24 +64,14 @@ class WhatsappConnectionManager {
     context: string,
     maxAttempts = 3,
   ) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        await this.updateConnection(connectionId, values)
-        return
-      } catch (error) {
-        const isLastAttempt = attempt === maxAttempts
-        this.logRuntimeError(
-          `${context} attempt=${attempt}/${maxAttempts}`,
-          connectionId,
-          error,
-        )
-
-        if (isLastAttempt || !this.isRetriableDbError(error)) {
-          throw error
-        }
-
-        await this.wait(200 * attempt)
-      }
+    try {
+      await withDbRetry(() => this.updateConnection(connectionId, values), {
+        maxAttempts,
+        delayMs: 200,
+      })
+    } catch (error) {
+      this.logRuntimeError(`${context} attempt=${maxAttempts}/${maxAttempts}`, connectionId, error)
+      throw error
     }
   }
 
