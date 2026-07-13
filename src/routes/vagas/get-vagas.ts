@@ -1,7 +1,16 @@
 import { db } from '@/db/index.js'
 import { withDbRetry } from '@/db/retry.js'
 import { vagas } from '@/db/schema.js'
-import { and, count, desc, eq, getTableColumns, sql, SQL } from 'drizzle-orm'
+import {
+  and,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  ilike,
+  sql,
+  SQL,
+} from 'drizzle-orm'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import z from 'zod'
 import { checkAutentication } from '../hooks/check-request-jwt.js'
@@ -70,39 +79,88 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
         tags: ['Vagas'],
         summary: 'Essa rota filtra as vagas por categoria.',
         querystring: z.object({
+          page: z.coerce.number().min(1).default(1),
+          limit: z.coerce.number().min(1).max(100).default(6),
           category: z.string().nullish(),
           modality: z
             .enum(['Remoto', 'Hibrido', 'Presencial', 'Home Office'])
             .nullish(),
+          city: z.string().optional(),
+          state: z
+            .string()
+            .length(2)
+            .transform((v) => v.toUpperCase())
+            .optional(),
           tipo_vaga: z.string().nullish(),
-          location: z.string().nullish(),
-          publisheAt: z.date().nullish(),
+          publisheAt: z.coerce.date().nullish(),
         }),
+
         response: {
-          200: z.object({ vagas: z.array(z.any()) }),
+          200: z.object({
+            vagas: z.array(z.any()),
+            hasMore: z.boolean(),
+            total: z.coerce.number(),
+            page: z.coerce.number(),
+          }),
           404: z.object({ error: z.string() }),
         },
       },
     },
     async (request, reply) => {
-      const { category, modality, tipo_vaga, location, publisheAt } =
-        request.query
+      const {
+        page,
+        limit,
+        category,
+        modality,
+        tipo_vaga,
+        publisheAt,
+        city,
+        state,
+      } = request.query
 
       const filters: SQL[] = []
 
       if (category) filters.push(eq(vagas.category, category))
       if (modality) filters.push(eq(vagas.modality, modality))
       if (tipo_vaga) filters.push(eq(vagas.tipo_vaga, tipo_vaga))
-      if (location) filters.push(eq(vagas.location, location))
+      if (city) {
+        filters.push(ilike(vagas.city, `%${city}%`))
+      }
+      if (state) {
+        filters.push(eq(vagas.state, state))
+      }
+
       if (publisheAt) filters.push(eq(vagas.publisheAt, new Date(publisheAt)))
 
+      const whereClause = filters.length > 0 ? and(...filters) : undefined
+
+      const [{ total }] = await withDbRetry(() =>
+        whereClause
+          ? db
+              .select({ total: count() })
+              .from(vagas)
+              .where(whereClause)
+              .execute()
+          : db.select({ total: count() }).from(vagas).execute(),
+      )
+
       const resultFilter = await withDbRetry(() =>
-        db
-          .select()
-          .from(vagas)
-          .where(and(...filters))
-          .orderBy(desc(vagas.publisheAt))
-          .execute(),
+        whereClause
+          ? db
+              .select()
+              .from(vagas)
+              .where(whereClause)
+              .limit(limit)
+              .offset((page - 1) * limit)
+              .orderBy(desc(vagas.publisheAt))
+              .execute()
+          : db
+              .select()
+              .from(vagas)
+              .limit(limit)
+              .offset((page - 1) * limit)
+              .orderBy(desc(vagas.publisheAt))
+              .execute(),
       )
 
       if (!resultFilter || resultFilter.length === 0) {
@@ -111,7 +169,12 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
           .send({ error: 'Nenhuma vaga encontrada com o filtro aplicado' })
       }
 
-      return reply.status(200).send({ vagas: resultFilter })
+      return reply.status(200).send({
+        vagas: resultFilter,
+        hasMore: page * limit < total,
+        total,
+        page,
+      })
     },
   )
 }

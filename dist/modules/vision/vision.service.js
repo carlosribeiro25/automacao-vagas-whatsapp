@@ -1,48 +1,51 @@
-import fs from 'fs';
-import path from 'path';
-import { openai } from '../../services/openai.services.js';
-import { vagaSchema } from '../vagas/vaga.schema.js';
+import fs from 'fs'
+import path from 'path'
+import { openai } from '../../services/openai.services.js'
+import { vagaSchema } from '../vagas/vaga.schema.js'
+import { normalizeLocation } from '../../utils/normalize-location.js'
 async function loadImageToBase64(imagePath) {
-    const isRemoteUrl = /^https?:\/\//i.test(imagePath);
-    if (!isRemoteUrl) {
-        return fs.readFileSync(imagePath, { encoding: 'base64' });
-    }
-    const response = await fetch(imagePath);
-    if (!response.ok) {
-        throw new Error(`Falha ao baixar imagem remota: ${response.status}`);
-    }
-    const contentType = response.headers.get('content-type') ?? 'image/jpeg';
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const mimeType = contentType.split(';')[0];
-    return {
-        mimeType,
-        base64: buffer.toString('base64'),
-    };
+  const isRemoteUrl = /^https?:\/\//i.test(imagePath)
+  if (!isRemoteUrl) {
+    return fs.readFileSync(imagePath, { encoding: 'base64' })
+  }
+  const response = await fetch(imagePath)
+  if (!response.ok) {
+    throw new Error(`Falha ao baixar imagem remota: ${response.status}`)
+  }
+  const contentType = response.headers.get('content-type') ?? 'image/jpeg'
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const mimeType = contentType.split(';')[0]
+  return {
+    mimeType,
+    base64: buffer.toString('base64'),
+  }
 }
 const SUPPORTED_MIME_TYPES = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    webp: 'image/webp',
-};
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+}
 export async function extractJobDataFromImage(imagePath) {
-    const isRemoteUrl = /^https?:\/\//i.test(imagePath);
-    const ext = path.extname(imagePath).slice(1).toLowerCase();
-    const mimeType = isRemoteUrl ? 'image/jpeg' : SUPPORTED_MIME_TYPES[ext];
-    if (!mimeType) {
-        console.log(`[Vision] Formato de imagem não suportado: .${ext}, ignorando.`);
-        return null;
-    }
-    const loadedImage = await loadImageToBase64(imagePath);
-    const base64Image = typeof loadedImage === 'string' ? loadedImage : loadedImage.base64;
-    const effectiveMimeType = typeof loadedImage === 'string' ? mimeType : loadedImage.mimeType;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-5',
-        messages: [
-            {
-                role: 'system',
-                content: `
+  const isRemoteUrl = /^https?:\/\//i.test(imagePath)
+  const ext = path.extname(imagePath).slice(1).toLowerCase()
+  const mimeType = isRemoteUrl ? 'image/jpeg' : SUPPORTED_MIME_TYPES[ext]
+  if (!mimeType) {
+    console.log(`[Vision] Formato de imagem não suportado: .${ext}, ignorando.`)
+    return null
+  }
+  const loadedImage = await loadImageToBase64(imagePath)
+  const base64Image =
+    typeof loadedImage === 'string' ? loadedImage : loadedImage.base64
+  const effectiveMimeType =
+    typeof loadedImage === 'string' ? mimeType : loadedImage.mimeType
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5',
+    messages: [
+      {
+        role: 'system',
+        content: `
 Você é um sistema especialista em análise de mensagens e imagens de vagas de emprego.
 
 Sua tarefa é:
@@ -78,6 +81,9 @@ Extrutura obriatória:
   "group_name": string | null,
   "contact": string | null,
   "link": string | null,
+
+  "city": string | null,
+  "state": string | null,
   "location": string | null
 }
 
@@ -87,6 +93,55 @@ REGRAS IMPORTANTES:
 - NÃO use markdown.
 - NÃO invente informações.
 - Se não encontrar um campo, retorne null.
+
+REGRAS PARA LOCALIZAÇÃO
+
+- Extraia a cidade e a UF sempre que elas estiverem explícitas na vaga.
+- O campo "city" deve conter apenas o nome da cidade.
+- O campo "state" deve conter apenas a sigla oficial da UF com duas letras em maiúsculo.
+- O campo "location" deve ser formado exatamente por "Cidade-UF".
+
+Exemplos válidos:
+
+Fortaleza-CE
+Belford Roxo-RJ
+Nova Iguaçu-RJ
+São Paulo-SP
+
+Exemplo de saída:
+
+{
+  "city": "Fortaleza",
+  "state": "CE",
+  "location": "Fortaleza-CE"
+}
+
+Caso a vaga seja totalmente Remota ou Home Office e não informe uma cidade específica:
+
+"city": null
+"state": null
+"location": null
+
+Não utilize nomes completos de estados como "Ceará" ou "Rio de Janeiro". Utilize apenas as siglas oficiais (CE, RJ, SP, MG, etc.).
+
+Exemplo de entrada:
+
+Empresa XYZ
+
+Vaga para Desenvolvedor Backend
+
+Local: Fortaleza - Ceará
+
+Modalidade: Presencial
+
+Saída esperada:
+
+{
+  "city": "Fortaleza",
+  "state": "CE",
+  "location": "Fortaleza-CE"
+}
+
 - salary deve ser número.
 - Considere vaga somente se houver context claro de:
     emprego,
@@ -121,62 +176,72 @@ Saída:
 }
 
 - category deve ser curta:
-  "Tecnologia"
+"Tecnologia"
+"Marketing"
   "Saúde"
-  "Administração"
+  "Jurídico"
   "Educação"
-  "Marketing"
+  "Administrativo"
+"Financeiro"
+"Engenharia"
+"Vendas"
+"RH"
+"Logística"
+"Industrial"
+"Atendimento"
+
   etc.
           `,
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Extraia os dados dessa vaga',
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${effectiveMimeType};base64,${base64Image}`,
             },
-            {
-                role: 'user',
-                content: [
-                    {
-                        type: 'text',
-                        text: 'Extraia os dados dessa vaga',
-                    },
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: `data:${effectiveMimeType};base64,${base64Image}`,
-                        },
-                    },
-                ],
-            },
+          },
         ],
-        response_format: {
-            type: 'json_object',
-        },
-    });
-    if (!isRemoteUrl && !fs.existsSync(imagePath)) {
-        throw new Error('Image not found!');
-    }
-    const content = response.choices[0].message.content || '{}';
-    let parsed;
-    try {
-        parsed = JSON.parse(content);
-    }
-    catch (error) {
-        console.error('[Vision] Erro ao parsear JSON da IA:', content);
-        return null;
-    }
-    console.log('[Vision] Resposta da IA:', JSON.stringify(parsed, null, 2));
-    try {
-        return vagaSchema.parse(parsed);
-    }
-    catch (error) {
-        console.error('[Vision] Erro na validação do schema Zod:', JSON.stringify(error, null, 2));
-        return null;
-    }
+      },
+    ],
+    response_format: {
+      type: 'json_object',
+    },
+  })
+  if (!isRemoteUrl && !fs.existsSync(imagePath)) {
+    throw new Error('Image not found!')
+  }
+  const content = response.choices[0].message.content || '{}'
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+  } catch (error) {
+    console.error('[Vision] Erro ao parsear JSON da IA:', content)
+    return null
+  }
+  console.log('[Vision] Resposta da IA:', JSON.stringify(parsed, null, 2))
+  try {
+    return vagaSchema.parse(parsed)
+  } catch (error) {
+    console.error(
+      '[Vision] Erro na validação do schema Zod:',
+      JSON.stringify(error, null, 2),
+    )
+    return null
+  }
 }
 export async function extractJobDataFromText(texto) {
-    const response = await openai.chat.completions.create({
-        model: 'gpt-5',
-        messages: [
-            {
-                role: 'system',
-                content: `
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5',
+    messages: [
+      {
+        role: 'system',
+        content: `
 Você é um sistema especialista em análise de mensagens de vagas de emprego.
 
 Sua tarefa é:
@@ -214,29 +279,31 @@ REGRAS:
 - texto_extraido deve conter o texto original da mensagem.
 - modality: "Remoto", "Hibrido", "Presencial" ou "Home Office".
         `,
-            },
-            {
-                role: 'user',
-                content: texto,
-            },
-        ],
-        response_format: { type: 'json_object' },
-    });
-    const content = response.choices[0].message.content || '{}';
-    let parsed;
-    try {
-        parsed = JSON.parse(content);
-    }
-    catch {
-        console.error('[Vision] Erro ao parsear JSON do texto:', content);
-        return null;
-    }
-    console.log('[Vision] Resposta texto da IA:', JSON.stringify(parsed, null, 2));
-    try {
-        return vagaSchema.parse(parsed);
-    }
-    catch (error) {
-        console.error('[Vision] Erro na validação Zod (texto):', JSON.stringify(error, null, 2));
-        return null;
-    }
+      },
+      {
+        role: 'user',
+        content: texto,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  })
+  const content = response.choices[0].message.content || '{}'
+  let parsed
+  try {
+    parsed = JSON.parse(content)
+    parsed = normalizeLocation(parsed)
+  } catch {
+    console.error('[Vision] Erro ao parsear JSON do texto:', content)
+    return null
+  }
+  console.log('[Vision] Resposta texto da IA:', JSON.stringify(parsed, null, 2))
+  try {
+    return vagaSchema.parse(parsed)
+  } catch (error) {
+    console.error(
+      '[Vision] Erro na validação Zod (texto):',
+      JSON.stringify(error, null, 2),
+    )
+    return null
+  }
 }

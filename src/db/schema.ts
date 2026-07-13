@@ -68,6 +68,8 @@ export const vagas = pgTable(
     group_name: text('group_name'),
     contact: text('contact'),
     link: text('link'),
+    city: text('city'),
+    state: text('state'),
     location: text('location'),
     is_job: boolean('is_job').default(true),
     processed_by_ai: boolean('processed_by_ai').default(false),
@@ -82,6 +84,8 @@ export const vagas = pgTable(
     index('vagas_connection_idx').on(table.connectionId),
     index('vagas_category_idx').on(table.category),
     index('vagas_location_idx').on(table.location),
+    index('vagas_city_idx').on(table.city),
+    index('vagas_state_idx').on(table.state),
   ],
 )
 

@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { openai } from '@/services/openai.services.js'
 import { vagaSchema } from '../vagas/vaga.schema.js'
+import { normalizeLocation } from '@/utils/normalize-location.js'
 
 async function loadImageToBase64(imagePath: string) {
   const isRemoteUrl = /^https?:\/\//i.test(imagePath)
@@ -93,6 +94,9 @@ Extrutura obriatória:
   "group_name": string | null,
   "contact": string | null,
   "link": string | null,
+
+  "city": string | null,
+  "state": string | null,
   "location": string | null
 }
 
@@ -102,6 +106,55 @@ REGRAS IMPORTANTES:
 - NÃO use markdown.
 - NÃO invente informações.
 - Se não encontrar um campo, retorne null.
+
+REGRAS PARA LOCALIZAÇÃO
+
+- Extraia a cidade e a UF sempre que elas estiverem explícitas na vaga.
+- O campo "city" deve conter apenas o nome da cidade.
+- O campo "state" deve conter apenas a sigla oficial da UF com duas letras em maiúsculo.
+- O campo "location" deve ser formado exatamente por "Cidade-UF".
+
+Exemplos válidos:
+
+Fortaleza-CE
+Belford Roxo-RJ
+Nova Iguaçu-RJ
+São Paulo-SP
+
+Exemplo de saída:
+
+{
+  "city": "Fortaleza",
+  "state": "CE",
+  "location": "Fortaleza-CE"
+}
+
+Caso a vaga seja totalmente Remota ou Home Office e não informe uma cidade específica:
+
+"city": null
+"state": null
+"location": null
+
+Não utilize nomes completos de estados como "Ceará" ou "Rio de Janeiro". Utilize apenas as siglas oficiais (CE, RJ, SP, MG, etc.).
+
+Exemplo de entrada:
+
+Empresa XYZ
+
+Vaga para Desenvolvedor Backend
+
+Local: Fortaleza - Ceará
+
+Modalidade: Presencial
+
+Saída esperada:
+
+{
+  "city": "Fortaleza",
+  "state": "CE",
+  "location": "Fortaleza-CE"
+}
+
 - salary deve ser número.
 - Considere vaga somente se houver context claro de:
     emprego,
@@ -136,11 +189,20 @@ Saída:
 }
 
 - category deve ser curta:
-  "Tecnologia"
+"Tecnologia"
+"Marketing"
   "Saúde"
-  "Administração"
+  "Jurídico"
   "Educação"
-  "Marketing"
+  "Administrativo"
+"Financeiro"
+"Engenharia"
+"Vendas"
+"RH"
+"Logística"
+"Industrial"
+"Atendimento"
+
   etc.
           `,
       },
@@ -255,6 +317,7 @@ REGRAS:
   let parsed
   try {
     parsed = JSON.parse(content)
+    parsed = normalizeLocation(parsed)
   } catch {
     console.error('[Vision] Erro ao parsear JSON do texto:', content)
     return null

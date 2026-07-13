@@ -1,13 +1,13 @@
-import { Resend } from 'resend';
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { Resend } from 'resend'
+const resend = new Resend(process.env.RESEND_API_KEY)
 export async function sendResetEmail(email, token) {
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
-    try {
-        await resend.emails.send({
-            from: 'Suporte <noreply@wilsoncarlostech.uk>',
-            to: email,
-            subject: 'Recuperação de senha',
-            html: `
+  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
+  try {
+    await resend.emails.send({
+      from: 'Suporte <noreply@wilsoncarlostech.uk>',
+      to: email,
+      subject: 'Recuperação de senha',
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           
           <p>
@@ -42,7 +42,7 @@ export async function sendResetEmail(email, token) {
           </p>
         </div>
       `,
-            text: `
+      text: `
 
 
 Recebemos uma solicitação para redefinir sua senha.
@@ -54,10 +54,9 @@ Este link expira em 15 minutos.
 
 Se você não solicitou esta alteração, ignore este e-mail.
       `,
-        });
-    }
-    catch (error) {
-        console.error('Erro ao enviar e-mail de recuperação:', error);
-        throw new Error('Não foi possível enviar o e-mail de recuperação');
-    }
+    })
+  } catch (error) {
+    console.error('Erro ao enviar e-mail de recuperação:', error)
+    throw new Error('Não foi possível enviar o e-mail de recuperação')
+  }
 }
