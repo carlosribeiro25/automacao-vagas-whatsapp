@@ -70,7 +70,11 @@ class WhatsappConnectionManager {
         delayMs: 200,
       })
     } catch (error) {
-      this.logRuntimeError(`${context} attempt=${maxAttempts}/${maxAttempts}`, connectionId, error)
+      this.logRuntimeError(
+        `${context} attempt=${maxAttempts}/${maxAttempts}`,
+        connectionId,
+        error,
+      )
       throw error
     }
   }

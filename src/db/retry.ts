@@ -1,4 +1,5 @@
-const RETRIABLE_DB_ERROR_PATTERN = /fetch failed|und_err_socket|other side closed|socket|econnreset|etimedout|eai_again|error connecting to database/i
+const RETRIABLE_DB_ERROR_PATTERN =
+  /fetch failed|und_err_socket|other side closed|socket|econnreset|etimedout|eai_again|error connecting to database/i
 
 export type DbRetryOptions = {
   maxAttempts?: number

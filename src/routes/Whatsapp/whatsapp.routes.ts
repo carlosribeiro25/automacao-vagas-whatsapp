@@ -104,8 +104,12 @@ export const whatsappRoutes: FastifyPluginAsyncZod = async (app) => {
         return reply.status(404).send({ error: 'Conexao nao encontrada' })
       }
 
-      await withDbRetry(() => db.delete(vagas).where(eq(vagas.connectionId, id)).execute())
-      await withDbRetry(() => db.delete(mensagens).where(eq(mensagens.connectionId, id)).execute())
+      await withDbRetry(() =>
+        db.delete(vagas).where(eq(vagas.connectionId, id)).execute(),
+      )
+      await withDbRetry(() =>
+        db.delete(mensagens).where(eq(mensagens.connectionId, id)).execute(),
+      )
       await withDbRetry(() =>
         db
           .delete(whatsapp_connection_groups)

@@ -3,6 +3,29 @@ import path from 'path'
 import { openai } from '@/services/openai.services.js'
 import { vagaSchema } from '../vagas/vaga.schema.js'
 
+async function loadImageToBase64(imagePath: string) {
+  const isRemoteUrl = /^https?:\/\//i.test(imagePath)
+
+  if (!isRemoteUrl) {
+    return fs.readFileSync(imagePath, { encoding: 'base64' })
+  }
+
+  const response = await fetch(imagePath)
+
+  if (!response.ok) {
+    throw new Error(`Falha ao baixar imagem remota: ${response.status}`)
+  }
+
+  const contentType = response.headers.get('content-type') ?? 'image/jpeg'
+  const buffer = Buffer.from(await response.arrayBuffer())
+  const mimeType = contentType.split(';')[0]
+
+  return {
+    mimeType,
+    base64: buffer.toString('base64'),
+  }
+}
+
 const SUPPORTED_MIME_TYPES: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',
@@ -12,17 +35,20 @@ const SUPPORTED_MIME_TYPES: Record<string, string> = {
 }
 
 export async function extractJobDataFromImage(imagePath: string) {
+  const isRemoteUrl = /^https?:\/\//i.test(imagePath)
   const ext = path.extname(imagePath).slice(1).toLowerCase()
-  const mimeType = SUPPORTED_MIME_TYPES[ext]
+  const mimeType = isRemoteUrl ? 'image/jpeg' : SUPPORTED_MIME_TYPES[ext]
 
   if (!mimeType) {
     console.log(`[Vision] Formato de imagem não suportado: .${ext}, ignorando.`)
     return null
   }
 
-  const base64Image = fs.readFileSync(imagePath, {
-    encoding: 'base64',
-  })
+  const loadedImage = await loadImageToBase64(imagePath)
+  const base64Image =
+    typeof loadedImage === 'string' ? loadedImage : loadedImage.base64
+  const effectiveMimeType =
+    typeof loadedImage === 'string' ? mimeType : loadedImage.mimeType
 
   const response = await openai.chat.completions.create({
     model: 'gpt-5',
@@ -132,7 +158,7 @@ Saída:
             type: 'image_url',
 
             image_url: {
-              url: `data:${mimeType};base64,${base64Image}`,
+              url: `data:${effectiveMimeType};base64,${base64Image}`,
             },
           },
         ],
@@ -144,7 +170,7 @@ Saída:
     },
   })
 
-  if (!fs.existsSync(imagePath)) {
+  if (!isRemoteUrl && !fs.existsSync(imagePath)) {
     throw new Error('Image not found!')
   }
 
