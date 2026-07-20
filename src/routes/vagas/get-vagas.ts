@@ -7,9 +7,12 @@ import {
   desc,
   eq,
   getTableColumns,
+  gte,
   ilike,
+  lte,
+  or,
   sql,
-  SQL,
+  type SQL,
 } from 'drizzle-orm'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import z from 'zod'
@@ -91,6 +94,7 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
             .length(2)
             .transform((v) => v.toUpperCase())
             .optional(),
+          location: z.string().optional(),
           tipo_vaga: z.string().nullish(),
           publisheAt: z.coerce.date().nullish(),
         }),
@@ -116,21 +120,40 @@ export const getVagasFilters: FastifyPluginAsyncZod = async (app) => {
         publisheAt,
         city,
         state,
+        location,
       } = request.query
 
       const filters: SQL[] = []
 
-      if (category) filters.push(eq(vagas.category, category))
+      if (category) filters.push(ilike(vagas.category, `%${category}%`))
       if (modality) filters.push(eq(vagas.modality, modality))
-      if (tipo_vaga) filters.push(eq(vagas.tipo_vaga, tipo_vaga))
+      if (tipo_vaga) filters.push(ilike(vagas.tipo_vaga, `%${tipo_vaga}%`))
       if (city) {
         filters.push(ilike(vagas.city, `%${city}%`))
       }
       if (state) {
         filters.push(eq(vagas.state, state))
       }
+      if (location?.trim()) {
+        const local = `%${location.trim()}%`
+        const locationFilter = or(
+          ilike(vagas.location, local),
+          ilike(vagas.city, local),
+        )
 
-      if (publisheAt) filters.push(eq(vagas.publisheAt, new Date(publisheAt)))
+        if (locationFilter) {
+          filters.push(locationFilter)
+        }
+      }
+
+      if (publisheAt) {
+        const start = new Date(publisheAt)
+        start.setUTCHours(0, 0, 0, 0)
+        const end = new Date(publisheAt)
+        end.setUTCHours(23, 59, 59, 999)
+        filters.push(gte(vagas.publisheAt, start))
+        filters.push(lte(vagas.publisheAt, end))
+      }
 
       const whereClause = filters.length > 0 ? and(...filters) : undefined
 
@@ -223,7 +246,6 @@ export const getSearch: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const { q, page, limit } = request.query
 
-      // implementação da logica para busca na barra de pesquisa por palavras chave. linha 149 - 172.
       const cleanQ = q.replace(/\bvagas?\b/gi, '').trim()
       const searchTerm = cleanQ || q
 
